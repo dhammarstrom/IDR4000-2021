@@ -1,0 +1,44 @@
+---
+title: "Data transformation"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+## Loading packages and data
+
+Loading packages, `tidyverse` loads `dplyr` and `tidyr`. In this session we will use the cycling data set from the `exscidata` package.
+
+```{r}
+library(tidyverse)
+library(exscidata)
+data("cyclingstudy")
+```
+
+To see get an overview of the data, use `glimps()`.
+
+```{r}
+# glimpse(cyclingstudy)
+```
+
+
+### Filter observeation by their value using `filter()`
+
+### Order the data frame using `arrange()`
+
+### Pick variables (columns) from the data frame using `select()`
+
+### Create new variables in the data set using `mutate()`
+
+### Summarise data using `sumarise()` (possibly over grouping through `group_by()`)
+
+
+## Pipe multiple operations together
+
+
+
+

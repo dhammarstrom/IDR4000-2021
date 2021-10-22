@@ -1,0 +1,52 @@
+---
+title: '`cyclingstudy` - Analysis'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Including figures in a report
+
+
+
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, fig.cap="Maximal aerobic power in response to systematic training in trained cyclists", fig.height=4, fig.width=4, fig.align ='center'}
+
+# load packages
+library(tidyverse) 
+library(exscidata)
+data("cyclingstudy")
+# Load the package ggtext to make markdown available in axis labels.
+library(ggtext) 
+
+
+
+# For ease of use I save a smaller dataset in a new object
+cycdat <- select(cyclingstudy, subject, timepoint, VO2.max)
+
+# Change the labels of the time variable
+cycdat$timepoint <- factor(cycdat$timepoint, levels = c("pre", "meso1", "meso2", "meso3"), 
+                           labels = c("Pre-training", "Meso-cycle 1", "Meso-cycle 2", "Meso-cycle 3"))
+
+
+# create the basic plot
+
+ggplot(data = cycdat, aes(timepoint, VO2.max, group = subject)) + 
+  # Add lines to connect dots. Putting the lines first and plotting points on top
+  geom_line() + 
+  # Add points foe each participant/time
+  geom_point(size = 3, fill = "lightblue", shape = 21) + 
+
+  # Adding correct axis titles and a figure title
+  labs(x = "Time-point", 
+       y = "VO<sub>2max</sub> (ml min<sup> -1</sup>)") +
+  
+  # Changing the text rendering using element_markdown from the ggtext package.
+  theme(axis.title.y = element_markdown(size = 12)) 
+
+
+
+```
+

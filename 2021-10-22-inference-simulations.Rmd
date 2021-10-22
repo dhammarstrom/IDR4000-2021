@@ -1,0 +1,244 @@
+---
+title: "Statistical inference"
+author: "Daniel Hammarström"
+date: "22 10 2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Population and sample
+
+- In statistics, a population is a defined collection of **all possible observations**.
+- The population is never (or rarely) investigated in full, instead we draw a **sample** from the population to represent it.
+- To make sure a sample is representative, techniques such as *random sampling* or *stratified random sampling*
+- In real life, we might have investigations without random sampling, but we pretend as is if we did...
+
+
+
+## Sampling and estimation
+
+
+- In frequentist statistics, the population characteristics are **fixed but unknown**, we use the sample to estimate them.
+- For a specific question, we usually draw only a limited number of samples (limited number of studies).
+- A sample can be used to estimate the mean together with some uncertainty. The uncertainty is estimated from a imaginary **sampling distribution**.
+- A sampling distribution is a distribution of e.g. sample averages drawn from the population with a certain sample size.
+
+
+
+
+## A sampling distribution
+
+```{r, message=FALSE, warning=FALSE}
+set.seed(10)
+library(tidyverse)
+
+population <- rnorm(10^6, mean = 5, sd = 10)
+
+
+results <- data.frame(means = rep(NA, 1000))
+
+
+for(i in 1:1000) {
+  
+  samp <- sample(population, 10, replace = FALSE)
+  
+  results[i, 1] <- mean(samp)
+  
+  
+}
+
+
+results %>%
+  ggplot(aes(means)) + geom_histogram(color = "black", fill = "gray80")
+
+
+```
+
+- This is a simulated example of a sampling distribution, 1000 studies, each with $n=10$ drawn from a fixed population.
+- The center of the distribution (mean of means) is pretty close to the population mean (5). The spread of the distribution represents different possible means and can be used to represent our uncertainty.
+
+- Using a single sample we can make a pretty informed guess about the distribution of imaginary samples.
+- **The standard error of the mean is an estimate of the standard deviation in the sampling distribution**.
+
+- The standard error of the mean depends on the estimated standard deviation and the sample size. If the sample size increases we get *"more certain"*.
+
+$$SE = \frac{s}{\sqrt{n}}$$
+
+
+```{r, message=FALSE, warning=FALSE}
+set.seed(10)
+
+
+population <- rnorm(10^6, mean = 5, sd = 10)
+
+
+results <- data.frame(means = rep(NA, 1000), 
+                      sd = rep(NA, 1000))
+
+
+for(i in 1:1000) {
+  
+  samp <- sample(population, 10, replace = FALSE)
+  
+  results[i, 1] <- mean(samp)
+  results[i, 2] <- sd(samp)
+  
+}
+
+results <- results %>%
+  mutate(se = sd / sqrt(10)) 
+
+
+head(results)
+
+
+
+```
+
+
+```{r}
+
+sd(results$means)
+
+mean(results$se)
+
+```
+
+## The effect of sample size on the sample distribution
+
+
+```{r, message = FALSE, warning = FALSE}
+
+set.seed(10)
+
+
+population <- rnorm(10^6, mean = 5, sd = 10)
+
+
+results <- data.frame(means = rep(NA, 1000), 
+                      sd = rep(NA, 1000))
+
+results50 <- data.frame(means = rep(NA, 1000), 
+                      sd = rep(NA, 1000))
+
+
+
+
+for(i in 1:1000) {
+  
+  samp <- sample(population, 10, replace = FALSE)
+  
+  results[i, 1] <- mean(samp)
+  results[i, 2] <- sd(samp)
+  
+  
+  samp50 <- sample(population, 50, replace = FALSE)
+  
+  results50[i, 1] <- mean(samp50)
+  results50[i, 2] <- sd(samp50)
+  
+  
+}
+
+
+bind_rows(results %>% mutate(n = 10), 
+          results50 %>% mutate(n = 50)) %>%
+  ggplot(aes(means)) + geom_histogram(color = "black", fill = "gray80") +
+  facet_wrap(~ n)
+
+
+
+```
+
+- With a larger sample size there is a smaller spread in the distribution of samples.
+
+```{r}
+bind_rows(results %>% mutate(n = 10), 
+          results50 %>% mutate(n = 50)) %>%
+  group_by(n) %>%
+  summarise(se_average = mean(sd/sqrt(n)), 
+            se_observed = sd(means)) %>%
+  print()
+```
+
+
+## How likely are we to find an effect in a sample? Statistical power.
+
+- In the population above, the average is 5 and the standard deviation is 10. How likely are we to find a result that can rule out "not different from zero"?
+- We can make a hypothesis test of the effect in the population against the null hypothesis:
+
+$$H_0: \mu = 0$$
+- This is a *one-sample* test, it can be performed with a simple linear model
+
+```{r}
+
+# Example sample
+
+samp <- sample(population, 15, replace = FALSE)
+
+summary(lm(y ~ 1, data = data.frame(y = samp)))
+
+```
+
+## Building a simulation experiment
+
+- How should we construct a sampling study to investigate how likely it is that a study finds a true effect?
+- What is the effect of sample size on likelihood of finding an effect?
+- What is the effect of the significance level?
+
+
+
+```{r}
+library(tidyverse)
+set.seed(1)
+
+population <- rnorm(10^6, 5, 10) 
+
+results <- data.frame(m = rep(NA, 1000), 
+                      se = rep(NA, 1000), 
+                      pval =rep(NA, 1000))
+
+
+# 0. Inside for-loop:
+
+for(i in 1:1000) {
+  
+# 1. Sample from the population
+  
+  samp <- sample(population, 200, 
+                 replace = FALSE)
+  
+  
+# 2. Create a model/ Make hypothesis test
+  
+  m <- lm(y ~ 1, data = data.frame(y = samp))
+  
+  results[i, 1] <- coef(summary(m))[1, 1]
+  results[i, 2] <- coef(summary(m))[1, 2]
+  results[i, 3] <- coef(summary(m))[1, 4]
+
+  
+  # 3. Repeat 1 and 2 1000 times
+  
+}
+
+
+
+# 4. Count numbers of studies with p < 0.05
+results %>%
+  filter(pval < 0.005) %>%
+  summarise(n = n(), 
+            prop = n / 1000)
+
+
+
+
+```
+
+
+

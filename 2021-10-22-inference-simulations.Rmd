@@ -665,7 +665,7 @@ results_total_null %>%
 
 ```
 
-- Be aware of **p = 0.47**, this p-value can be more probable when sampling from the zero-effect population in certain cases, an example:
+- Be aware of **p = 0.047**, this p-value can be more probable when sampling from the zero-effect population in certain cases, an example:
 
 ```{r}
 

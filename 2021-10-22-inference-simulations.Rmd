@@ -187,9 +187,14 @@ summary(lm(y ~ 1, data = data.frame(y = samp)))
 
 ## Building a simulation experiment
 
-- How should we construct a sampling study to investigate how likely it is that a study finds a true effect?
-- What is the effect of sample size on likelihood of finding an effect?
-- What is the effect of the significance level?
+We now will build a simulation study to investigate 
+
+- How often will we find a "true" population effect in studies of different sizes?
+- What is the relationship between effect size, power and statistical significance?
+- What is the effect of sample size on the precision of estimates (confidence intervals)
+
+
+Our simulation will investigate a known population effect of 0.5. This standardized effect ($d$) is in the *one-sample* case $d = \frac{mean}{SD}$.
 
 
 
@@ -197,43 +202,246 @@ summary(lm(y ~ 1, data = data.frame(y = samp)))
 library(tidyverse)
 set.seed(1)
 
+
+# Create a population to sample from with a known effect
+# In standardized terms, the population effect is 0.5 = mean / sd.
+
+
 population <- rnorm(10^6, 5, 10) 
 
-results <- data.frame(m = rep(NA, 1000), 
-                      se = rep(NA, 1000), 
-                      pval =rep(NA, 1000))
+# Calculate the population effect size 
+pop.es <- mean(population) / sd(population)
+
+
+results_total <- list()
+
+
+
+# If use a progress bar 
+# pb <- txtProgressBar(min = 0, max = 1000, style = 3)
 
 
 # 0. Inside for-loop:
 
+
+
+
 for(i in 1:1000) {
   
-# 1. Sample from the population
+# 1. Sample from the population with sample size 10 to 100
   
-  samp <- sample(population, 200, 
+  # 1.1 create a vector of sample sizes
+  sample.sizes <- seq(from = 10, to = 100, by = 10)
+  # 1.2 create a list to store results
+  results_sub <- list()
+  
+  # 1.3 Inside a nested for-loop, perform sampling with each sample size
+  for(j in 1:length(sample.sizes)) {
+    
+  samp <- sample(population, sample.sizes[j], 
                  replace = FALSE)
   
   
-# 2. Create a model/ Make hypothesis test
+# 2. Create a model
   
   m <- lm(y ~ 1, data = data.frame(y = samp))
   
-  results[i, 1] <- coef(summary(m))[1, 1]
-  results[i, 2] <- coef(summary(m))[1, 2]
-  results[i, 3] <- coef(summary(m))[1, 4]
+  # 2.1 Store results from each model as a data frame in a list:
+  
+ results_sub[[j]] <- data.frame(mean = coef(summary(m))[1, 1],  # Estimated mean
+             se = coef(summary(m))[1, 2],  # Standard error
+             pval = coef(summary(m))[1, 4],  # p-value
+             ci.lwr = confint(m)[1], # confidence interval 
+             ci.upr = confint(m)[2], # confidence interval
+             effect.size = mean(samp) / sd(samp),
+             sample.size = sample.sizes[j]) # Sample size
+  
+    
+    
+  }
+  # 2.2 Combine all data frames from each sample size as a data frame in a list
+
+  results_total[[i]] <- bind_rows(results_sub)
 
   
-  # 3. Repeat 1 and 2 1000 times
+  # 3. Repeat 1 and 2 1000 times, performing 1000 studies each with 
+  # sample sizes 10 to 100.
+  
+  # If we use a "progress bar"
+  # setTxtProgressBar(pb, i)
   
 }
 
+# Close the progress bar
+# close(pb)
+
+# Combine all results
+results_total <- bind_rows(results_total)
+
+```
 
 
-# 4. Count numbers of studies with p < 0.05
-results %>%
-  filter(pval < 0.005) %>%
+### What is the relationship between sample size and finding a true effect?
+
+- As the sample size increases, we are more likely to have a study that detects a true effect (at a fixed significance level).
+
+
+```{r}
+
+# Count numbers of studies with p < 0.05
+results_total %>%
+  filter(pval < 0.05) %>%
+  group_by(sample.size) %>%
   summarise(n = n(), 
-            prop = n / 1000)
+            prop = n / 1000) %>%
+  ggplot(aes(sample.size, 100 * prop)) + geom_line() + geom_point(shape = 21, fill = "lightblue", size = 3) + 
+  labs(x = "Sample size", 
+       y = "Percentage of studies rejecting the null-hypothesis", 
+       title = "Statistical power and sample size", 
+       subtitle = "Statistical significance set to 0.05, standardized effect-size 0.5") +
+  theme_bw()
+
+```
+
+- The relationship between power and sample size can be used to make cost-benefit analyses of future studies.
+- The "cost" of a study can be regarded as e.g. economical or ethical.
+- In most cases the power calculation can be done without simulations, using e.g. the `pwr` package.
+
+```{r}
+
+library(pwr)
+
+sample.sizes <- seq(from = 10, to = 100, by = 10)
+results.pwr <- list()
+
+for(i in 1:length(sample.sizes)) {
+  
+  pwr_analysis <- pwr.t.test(type = "one.sample", d = 5/10, sig.level = 0.05, n = sample.sizes[i])
+  
+
+  results.pwr[[i]] <- data.frame(sample.size = sample.sizes[i], 
+                                 prop = pwr_analysis$power)
+  
+  
+  }
+
+results.pwr <- bind_rows(results.pwr)
+
+# Count numbers of studies with p < 0.05
+results_total %>%
+  filter(pval < 0.05) %>%
+  group_by(sample.size) %>%
+  summarise(n = n(), 
+            prop = n / 1000) %>%
+  ggplot(aes(sample.size, 100 * prop)) + 
+  geom_line() + 
+  geom_point(shape = 21, fill = "lightblue", size = 3) + 
+  
+  geom_line(data = results.pwr, color = "red") +
+  
+  labs(x = "Sample size", 
+       y = "Percentage of studies rejecting the null-hypothesis", 
+       title = "Statistical power and sample size", 
+       subtitle = "Statistical significance set to 0.05, standardized effect-size 0.5. Red line indicates analytical power.") +
+  theme_bw()
+
+
+```
+
+
+
+### Effect size and statistical significance
+
+
+
+- A standardized (observed) effect size may be calculated from each study. What is the relationship between effect-sizes, sample sizes and p-values?
+
+
+- The p-value is directly related to the observed effect-size. The sample size determines the *p*-value at a specific effect-size.
+
+
+```{r}
+
+library(cowplot)
+
+
+plotA <- results_total %>%
+  ggplot(aes(effect.size, pval, 
+             color = as.factor(sample.size))) + geom_point() +
+  labs(color = "Sample size") +
+  
+    geom_hline(yintercept = 0.05, color = "red") + 
+  annotate("text", x = 1.5, y = 0.05 + 0.1, 
+           color = "red",
+           label = "P-value = 0.05", 
+           size = 2.5) +
+  
+  geom_hline(yintercept = 0.001, color = "blue") + 
+  annotate("text", x = 1.5, y = 0.001 + 0.1, 
+           color = "blue",
+           label = "P-value = 0.01", 
+           size = 2.5) +
+  
+  labs(title = "Effect size vs. p-values", 
+       x = "Effect size", 
+       y = "P-value") + 
+
+  theme_bw() + 
+  theme(legend.position = "none")
+
+
+
+plotB <- results_total %>%
+  ggplot(aes(effect.size, -log(pval), 
+             color = as.factor(sample.size))) + geom_point() +
+  labs(color = "Sample size", 
+       title = " ", 
+       x = "Effect size", 
+       y = "-log(p-value)") +
+  
+  geom_hline(yintercept = -log(0.05), color = "red") + 
+  annotate("text", x = -0.2, y = -log(0.05) + 1, 
+           color = "red",
+           label = "P-value = 0.05", 
+           size = 2.5) +
+  
+  geom_hline(yintercept = -log(0.001), color = "blue") + 
+  annotate("text", x = -0.2, y = -log(0.001) + 1, 
+           color = "blue",
+           label = "P-value = 0.01", 
+           size = 2.5) +
+  scale_x_continuous(breaks = c(0, 0.5, 1, 2)) +
+  
+  
+  theme_bw()
+
+library(cowplot)
+plot_grid(plotA, plotB, ncol = 2, rel_widths = c(0.8, 1))
+
+```
+
+
+- The observed effect size is an estimation of the population effect size. In our case, the population effect-size is $\frac{mean}{SD} = \frac{5}{10} = 0.5$.
+- How well do we estimate effect sizes?
+
+```{r}
+
+library(ggtext)
+
+results_total %>%
+  ggplot(aes(sample.size, effect.size, color = pval)) + 
+  
+  geom_point(position = position_jitter(), alpha = 0.5) +
+    geom_hline(yintercept = pop.es, lty = 1, size = 2, color = "red") +
+  labs(x = "Sample size", 
+       y = "Observed standardized effect-size", 
+       color = "P-value", 
+           title = "Observed effect-sizes per sample size") +
+  annotate("richtext", x = 150, y = pop.es, 
+           color = "red", 
+           hjust = 1,
+           label = "Population effect-size") +
+  theme_bw()
 
 
 
@@ -241,4 +449,389 @@ results %>%
 ```
 
 
+### Effect of sample size on precision
 
+- Precision could be regarded as the ability to estimate an effect with some degree of certainty.
+- The confidence interval (CI) is constructed to find the true population effect at a given rate (e.g. 95% of studies).
+- CI depends on the sample size:
+
+$$95\%~CI:~Estimate \pm t_{\alpha/2, df = n-1} \times SE$$
+$$95\%~CI:~Estimate \pm t_{\alpha/2, df = n-1} \times \frac{s}{\sqrt{n}}$$
+For n = 10:
+
+$$95\%~CI:~Estimate \pm 2.26 \times SE$$
+
+
+```{r}
+results_total %>%
+  ggplot(aes(sample.size, ci.upr-ci.lwr, fill = as.factor(sample.size))) +
+  geom_point(position = position_jitter(width = 0.8),
+             shape = 21, alpha = 0.4) +
+  labs(x = "Sample size", 
+       y = "Range of confidence intervals (Upper - Lower)", 
+       title = "Confidence interval width and sample size") + 
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+- To decrease the width of the confidence interval by half, we need to increase the sample size about 3-4 times.
+
+```{r}
+library(knitr)
+
+results_total %>% 
+  mutate(ci_width = ci.upr-ci.lwr) %>%
+  group_by(sample.size) %>%
+  summarise(ci_width = mean(ci_width)) %>%
+  kable(col.names = c("Sample size", "95% CI width"), 
+        digits = c(1, 1))
+
+
+```
+
+- The confidence interval covers the *true population parameter* in 95% of repeated studies. 1000 studies is not enough to reach exactly 95%.
+
+```{r}
+results_total %>%
+  mutate(sig = if_else(ci.lwr <= 5 & ci.upr >= 5, "sig", "ns"), 
+         interval = paste0(rep(seq(1:1000), each = 10))) %>%
+  filter(sig == "sig") %>%
+  group_by(sample.size) %>%
+  summarise(prop = 100 * (n() / 1000)) %>%
+    kable(col.names = c("Sample size", "Proportion of 95% CI finding the true effect"), 
+        digits = c(1, 1))
+```
+
+- We will be wrong at the same rate with a given coverage of the confidence interval independent of the sample size.
+- However, we could increase the *coverage* of the interval and maintain *precision* with a larger sample size
+
+
+```{r}
+results_total %>%
+  mutate(sig = if_else(ci.lwr <= 5 & ci.upr >= 5, "sig", "ns"), 
+         interval = paste0(rep(seq(1:1000), each = 10))) %>%
+  filter(interval %in% seq(1:100)) %>%
+  
+  ggplot(aes(mean, interval, color = sig, alpha = sig)) + 
+  geom_errorbarh(aes(xmin = ci.lwr, 
+                    xmax = ci.upr)) + 
+  
+  scale_alpha_manual(values = c(1, 0.3)) +
+  
+  geom_vline(xintercept = 5, color = "red") +
+  
+  facet_wrap(~ sample.size) + 
+  
+  labs(title = "Confidence intervals from 100 studies", 
+       subtitle = "Red intervals misses the population average") +
+  theme_bw() +
+  
+  theme(axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        legend.position = "none", 
+        axis.title = element_blank())
+
+```
+
+
+## What if there is no effect?
+
+- Studies that examine a population effect that is close to zero will be wrong at rate of 5%, if the $\alpha$ level is set to 0.05.
+- The "power" of such studies is 5% regardless of the sample size.
+
+
+
+```{r}
+library(tidyverse)
+set.seed(1)
+
+
+# Create a population to sample from with a known effect
+# In standardized terms, the population effect is 0 = mean / sd.
+
+
+population <- rnorm(10^6, 0, 10) 
+
+# Calculate the population effect size 
+pop.es <- mean(population) / sd(population)
+
+
+results_total_null <- list()
+
+
+
+# If use a progress bar 
+# pb <- txtProgressBar(min = 0, max = 1000, style = 3)
+
+
+# 0. Inside for-loop:
+
+
+
+
+for(i in 1:1000) {
+  
+# 1. Sample from the population with sample size 10 to 100
+  
+  # 1.1 create a vector of sample sizes
+  sample.sizes <- seq(from = 10, to = 100, by = 10)
+  # 1.2 create a list to store results
+  results_sub <- list()
+  
+  # 1.3 Inside a nested for-loop, perform sampling with each sample size
+  for(j in 1:length(sample.sizes)) {
+    
+  samp <- sample(population, sample.sizes[j], 
+                 replace = FALSE)
+  
+  
+# 2. Create a model
+  
+  m <- lm(y ~ 1, data = data.frame(y = samp))
+  
+  # 2.1 Store results from each model as a data frame in a list:
+  
+ results_sub[[j]] <- data.frame(mean = coef(summary(m))[1, 1],  # Estimated mean
+             se = coef(summary(m))[1, 2],  # Standard error
+             pval = coef(summary(m))[1, 4],  # p-value
+             ci.lwr = confint(m)[1], # confidence interval 
+             ci.upr = confint(m)[2], # confidence interval
+             effect.size = mean(samp) / sd(samp),
+             sample.size = sample.sizes[j]) # Sample size
+  
+    
+    
+  }
+  # 2.2 Combine all data frames from each sample size as a data frame in a list
+
+  results_total_null[[i]] <- bind_rows(results_sub)
+
+  
+  # 3. Repeat 1 and 2 1000 times, performing 1000 studies each with 
+  # sample sizes 10 to 100.
+  
+  # If we use a "progress bar"
+  # setTxtProgressBar(pb, i)
+  
+}
+
+# Close the progress bar
+# close(pb)
+
+# Combine all results
+results_total_null <- bind_rows(results_total_null)
+
+```
+
+
+```{r}
+
+# Count numbers of studies with p < 0.05
+results_total_null %>%
+  filter(pval < 0.05) %>%
+  group_by(sample.size) %>%
+  summarise(n = n(), 
+            prop = n / 1000) %>%
+  ggplot(aes(sample.size, 100 * prop)) + 
+  geom_hline(yintercept = 5, lty = 2, color = "grey50") +
+  geom_line() + 
+  geom_point(shape = 21, fill = "lightblue", size = 3) + 
+  labs(x = "Sample size", 
+       y = "Percentage of studies rejecting the null-hypothesis", 
+       title = "Statistical power and sample size", 
+       subtitle = "Statistical significance set to 0.05, standardized effect-size 0") +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme_bw()
+
+```
+
+- P-values in studies examining population zero-effects will be uniformly distributed
+
+
+```{r}
+
+results_total_null %>%
+  ggplot(aes(pval)) + 
+  geom_histogram(aes(y=100 * ..count../1000), 
+                 binwidth = 0.05, boundary = 0, color = "gray30", fill = "white") + 
+  labs(x = "P-value", 
+       y = "Percentage of studies", 
+       title = "Distribution of p-values from studies of a population zero-effect") +
+  scale_y_continuous(limits = c(0, 10), expand = c(0, 0)) +
+  facet_wrap(~ sample.size) +
+  theme_bw()
+
+
+
+```
+
+- Be aware of **p = 0.47**, this p-value can be more probable when sampling from the zero-effect population in certain cases, an example:
+
+```{r}
+
+results_total %>%
+  filter(sample.size == 50, 
+         pval <= 0.05) %>%
+    ggplot(aes(pval)) + 
+  geom_histogram(aes(y=100 * ..count../1000), 
+                 binwidth = 0.005, boundary = 0, color = "gray30", fill = "darkolivegreen4") +
+  
+  
+    geom_histogram(data = results_total_null %>%
+                          filter(sample.size == 50, 
+                                  pval <= 0.05), 
+  aes(y=100 * ..count../1000), 
+                 binwidth = 0.005, boundary = 0, color = "gray30", fill = "darkblue") +
+  
+    labs(x = "P-value", 
+       y = "Percentage of studies", 
+       title = "Distribution of p-values from studies of population zero-effect and true effect (d = 0.5)", 
+       subtitle = "Sample size: n = 50") +
+  annotate("text", x = 0.03, y = 5, label = "Population effect: 0", color = "darkblue") +
+  annotate("text", x = 0.03, y = 6, label = "Population effect: 0.5", color = "darkolivegreen4") +
+  coord_cartesian(ylim=c(0,10)) +
+  theme_bw()
+
+
+
+
+```
+
+
+<!--
+## Estimation of the sampling distribution
+
+- When we estimate the standard error, we do this with a set of assumptions.
+- In the *one-sample* case that we have been working with, the assumptions are
+  - Random sampling
+  - Independent observations
+  - The population is approximately normally distributed
+
+- In a two sample scenario we need to make an assumption regarding the variation the two groups.
+- This variation is used to calculate the standard errors, what happends if we are wrong about the variations in each group?
+
+
+```{r}
+
+# library(nlme)
+# 
+# 
+# 
+# population_a <- rnorm(10^6, mean = 5, sd = 10)
+# 
+# population_b <- rnorm(10^6, mean = 10, sd = 10)
+# 
+# population_c <- rnorm(10^6, mean = 10, sd = 20)
+# 
+# population_d <- rnorm(10^6, mean = 10, sd = 30)
+# 
+# 
+# results_variance <- list()
+# 
+# for(i in 1:1000) {
+#   
+#   
+#   dat <- bind_rows(data.frame(y = sample(population_a, size = 25),
+#                               group = "a"), 
+#                    data.frame(y = sample(population_b, size = 25),
+#                               group = "b"), 
+#                    data.frame(y = sample(population_c, size = 25),
+#                               group = "c"), 
+#                    data.frame(y = sample(population_d, size = 25),
+#                               group = "d")) 
+#                               
+#   ## Assuming equal variance
+#   mod1 <- lm(y ~ group, dat[dat$group %in% c("a", "b"),])
+#   mod2 <- lm(y ~ group, dat[dat$group %in% c("a", "c"),])
+#   mod3 <- lm(y ~ group, dat[dat$group %in% c("a", "d"),])
+#   
+# 
+#   
+#   ## Not assuming equal variance
+#   mod4 <- gls(y ~ group, dat[dat$group %in% c("a", "b"),],
+#               method = "ML", 
+#               weights = varIdent(form = ~1|group))
+#   mod5 <- gls(y ~ group, dat[dat$group %in% c("a", "c"),], 
+#               method = "ML", 
+#               weights = varIdent(form = ~1|group))
+#   mod6 <- gls(y ~ group, dat[dat$group %in% c("a", "d"),], 
+#               method = "ML", 
+#               weights = varIdent(form = ~1|group))
+#   
+#   
+#   t1 <- t.test(y~ group, data = dat[dat$group %in% c("a", "b"),])
+#   t2 <- t.test(y~ group, data = dat[dat$group %in% c("a", "c"),])
+#   t3 <- t.test(y~ group, data = dat[dat$group %in% c("a", "d"),])
+#   
+#   t1$estimate[2] - t1$estimate[1]
+# 
+#   t1$stderr
+#   
+#   
+#   results_variance[[i]] <- data.frame(estimate = c(coef(summary(mod1))[2,1], 
+#                                               coef(summary(mod2))[2,1], 
+#                                               coef(summary(mod3))[2,1], 
+#                                               coef(summary(mod4))[2,1], 
+#                                               coef(summary(mod5))[2,1], 
+#                                               coef(summary(mod6))[2,1], 
+#                                               t1$estimate[2] - t1$estimate[1],
+#                                               t2$estimate[2] - t2$estimate[1], 
+#                                               t3$estimate[2] - t3$estimate[1]),
+#                                  se = c(coef(summary(mod1))[2,2], 
+#                                               coef(summary(mod2))[2,2], 
+#                                               coef(summary(mod3))[2,2], 
+#                                               coef(summary(mod4))[2,2], 
+#                                               coef(summary(mod5))[2,2], 
+#                                               coef(summary(mod6))[2,2], 
+#                                         t1$stderr,
+#                                         t1$stderr,
+#                                         t1$stderr
+#                                         ),
+#                                  pval = c(coef(summary(mod1))[2,4], 
+#                                               coef(summary(mod2))[2,4], 
+#                                               coef(summary(mod3))[2,4], 
+#                                               coef(summary(mod4))[2,4], 
+#                                               coef(summary(mod5))[2,4], 
+#                                               coef(summary(mod6))[2,4]), 
+#                                  model = 1:6, 
+#                                  iter = i)
+#   
+#   
+#   
+# }
+# 
+# 
+# summary(mod3)
+# summary(mod6)
+# 
+# 
+# 
+# temp <- bind_rows(results_variance)
+# 
+# 
+# temp %>%
+#   mutate(var.assumption = if_else(model %in% 1:3, "equal", "notequal"), 
+#          var.diff = rep(c(1, 2, 3), 2000)) %>%
+#   dplyr::select(se:var.diff, -model, -pval) %>%
+#   pivot_wider(names_from = var.assumption,
+#               values_from = se) %>%
+#   ggplot(aes(equal, notequal, color = var.diff)) + geom_point()
+#   
+#   print()
+# 
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+-->

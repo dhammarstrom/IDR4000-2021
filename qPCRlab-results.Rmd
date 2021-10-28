@@ -1,0 +1,358 @@
+---
+title: "qPCR analysis"
+author: "Daniel Hammarström"
+date: "27 10 2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+## Packages
+
+To import and analyze qPCR data using R, you will need the packages `qpcR`, `parallel` and `qpcrpal`. Installing `qpcrpal` with vignettes will take some time. Set `build_vignettes` to `FALSE` if you are in a hurry.
+
+
+```{r}
+
+# Check if qpcR, readxl and parallel are installed, otherwise install
+if("qpcR" %in% rownames(installed.packages()) == FALSE) install.packages("qpcR")
+if("readxl" %in% rownames(installed.packages()) == FALSE) install.packages("readxl")
+if("parallel" %in% rownames(installed.packages()) == FALSE) install.packages("parallel")
+
+# Check if qpcrpal is installed, otherwise install
+if("qpcrpal" %in% rownames(installed.packages()) == FALSE) {
+  
+  library(remotes)
+  remotes::install_github("dhammarstrom/qpcrpal", build_vignettes = TRUE)
+  
+}
+
+# Load packages
+library(qpcR)
+library(readxl)
+library(parallel)
+library(qpcrpal)
+library(tidyverse)
+
+
+
+
+
+```
+
+## Exploring the data
+
+- Reading and analyzing qPCR-data is done in a stepwise manner using `qpcrpal`.
+- The `read_quant5` function organizes the data from the instrument (QuantStudio 5)
+- `model_qpcr` creates models of the fluorecense from each reaction
+- `analyze_models` use the information in each model to calculate summaries for each reaction.
+
+```{r}
+
+
+group1 <- read_quant5("./data/qpcr/IDR4000-Group1-precision.xls", skip = 47) %>%
+  mutate(ID = paste0(Well, "_", ID))
+
+
+models <- model_qpcr(group1)
+
+
+results_group1 <- analyze_models(models)
+
+```
+
+
+```{r, echo = FALSE, fig.caption = "An example reaction"}
+
+data.frame(predict(models[[1]]), cycle = 1:40) %>%
+  ggplot(aes(cycle, Prediction)) +
+  geom_line() +
+  geom_point(data = group1 %>% filter(ID == "A1_Jacob"),
+             aes(Cycle, Rn), shape = 21, fill = "red") +
+  labs(title = "Observed and modelled fluorescence per cycle",
+       subtitle = "Model: black line; Observed: red points",
+       x = "PCR cycle",
+       y = "Fluorescence") +
+  geom_vline(xintercept = results_group1 %>%
+               filter(ID == "A1_Jacob_NA_NA_MyHC2A") %>%
+               pull(cpD2),
+             lty = 2) +
+  annotate("text", x = 17, y = 1.9, label = "Quantification cycle (Cq)",
+           hjust = 0) +
+  theme_bw()
+
+
+```
+
+
+- `qpcrpal` organize the data and uses functions from the `qpcR` package to model the data.
+- A quantification cycle can be calculated from each modelled reaction.
+- The `analyze_models` function returs alot of values, the cpD2 can be used as the Cq value.
+
+## Exercise: Calculate precision 
+
+- Clone the repository "dhammarstrom/IDR4000-2021" and read a cleaned data set of precision values
+- Determine a set of rules (e.g. remove "bad" reactions, the smallest and biggest value, or everything below 10 and above 30)
+- Determine the precision for each student as the coefficient of variation $CV = \frac{SD}{Mean}$
+
+- Work in groups: **Who has the lowest CV??**
+
+```{r, eval = FALSE}
+precision <- readRDS("./data/rna-lab-cq-precision.RDS")
+```
+
+
+
+```{r, echo = FALSE}
+
+#
+group2 <- read_quant5("./data/qpcr/IDR4000-group2-precision.xls", skip = 47) %>%
+  mutate(ID = paste0(Well, "_", ID))
+models2 <- model_qpcr(group2)
+results_group2 <- analyze_models(models2)
+
+
+group3 <- read_quant5("./data/qpcr/IDR4000-GROUP3-precision.xls", skip = 47) %>%
+  mutate(ID = paste0(Well, "_", ID))
+
+models3 <- model_qpcr(group3)
+results_group3 <- analyze_models(models3)
+
+
+clean_cq_precision <- bind_rows(results_group3  %>%
+  separate(ID, into = c("well", "name", "X1", "X2", "target")) %>%
+  dplyr::select(name, target, cq = cpD2), 
+  results_group2  %>%
+  separate(ID, into = c("well", "name", "X1", "X2", "target")) %>%
+  dplyr::select(name, target, cq = cpD2), 
+  results_group1 %>%
+  separate(ID, into = c("well", "name", "X1", "X2", "target")) %>%
+  dplyr::select(name, target, cq = cpD2)) 
+
+
+saveRDS(clean_cq_precision, file = "./data/rna-lab-cq-precision.RDS")
+
+## Example code to generate a table 
+
+# clean_cq_precision%>%
+#   filter(cq < 35 & cq > 10) %>%
+#   group_by(name, target) %>% 
+#   summarise(n = n(), 
+#             m = mean(cq), 
+#             s = sd(cq), 
+#             cv = s / m) %>%
+#   arrange(cv) %>%
+#   knitr::kable(col.names = c("Name", "Target", "n reactions", "Mean", "SD", "CV"), 
+#                digits = c(NA, NA, 0, 2, 2, 3))
+# 
+```
+
+## Estimation of reaction efficiency
+
+- In theory, a PCR reaction doubles the number of target copies each cycle.
+- When plotting log10(concentrations) against Cq values we can estimate efficiency
+
+$$Efficiency = 10^{-1/slope}$$
+- When the slope is ~ -3.3
+
+$$Efficiency = 10^{-1/-3.32} = 2$$
+- This means that for each cycle we have a doubling of PCR product. A difference in 3.32 cycles would also indicate a 10-fold difference in cDNA concentrations
+
+$$2^{3.32} = 10$$
+
+```{r, echo = FALSE, fig.caption = "Example of a efficiency estimation"}
+
+cyc.diff <- 3.327
+
+dat <- data.frame(concentration = c(1, 1/10, 1/100, 1/1000, 1/10000, 1/100000), 
+           cq = c(15, 
+                  15 + cyc.diff,
+                  15 + cyc.diff*2, 
+                  15 + cyc.diff*3, 
+                  15 + cyc.diff*4, 
+                  15 + cyc.diff*5)) 
+
+
+slope <- coef(lm(cq ~ log10(concentration), data = dat))[2]
+
+dat %>%
+  ggplot(aes(cq, log10(concentration)))  + 
+  geom_point() + geom_smooth(method = "lm") + 
+  theme_bw() + 
+  annotate("text", x = 15, y = -3, hjust = 0, label = "Efficiency factor ~ 2\n when slope ~ 3.3")
+
+
+```
+
+
+### Estimation of primer efficiency using real data: Exercises
+
+- Use the data stored in `./data/efficiency-estimate-data.RDS` to plot Cq-values against log10 concentrations. Try to replicate the figure below.
+- Create a model (`lm(cq ~ log10(concentration), data = dat`) for each target primer and extract the slope.
+- Use the slope to calculate the efficiency factor (`= 10^-(1/slope)`).
+- Look at the plot, what is the effect of removing measurements that are clear outliers? Use `filter` to remove specific cq-values from each primer and re-do the calculations.
+
+
+```{r, echo = FALSE, warning = FALSE, fig.cap = "Efficiency calculations made from serial dilution of cDNA"}
+
+group1 <- read_quant5("./data/qpcr/group1-efficiency.xls", skip = 47) %>%
+  mutate(ID = paste0(Well, "_", ID))
+
+models1 <- model_qpcr(group1)
+
+results_group1 <- analyze_models(models1)
+
+
+eff_g1 <- results_group1 %>%
+  separate(ID, into = c("well", "sample", "subsample", "time", "target")) %>%
+  dplyr::select(well:target, cq = cpD2) %>%
+  filter(!(sample %in% c("FP1", "FP2", "FP3")), 
+         target %in% c("reep5", "b2m")) %>%
+  mutate(sample = gsub("s1", "", sample), 
+         sample = gsub("s2", "", sample), 
+         concentration = if_else(sample == "pool1", 10, 
+                                 if_else(sample == "pool2", 50, 
+                                         if_else(sample == "pool3", 250, 
+                                                 if_else(sample == "pool4", 1250, 
+                                                         if_else(sample == "pool5", 6250, 
+                                                                 if_else(sample == "pool6", 31250, 156250)))))), 
+         concentration = 1/concentration) %>%
+   dplyr::select(target, concentration, cq) 
+
+#### Group 2
+
+group2 <- read_quant5("./data/qpcr/group2-efficiency.xls", skip = 47) %>%
+  mutate(ID = paste0(Well, "_", ID))
+
+models2 <- model_qpcr(group2)
+
+results_group2 <- analyze_models(models2)
+
+eff_g2 <- results_group2 %>%
+  separate(ID, into = c("well", "sample", "time", "na", "target")) %>%
+  dplyr::select(well:target, cq = cpD2) %>%
+  filter(!(sample %in% c("FP1", "FP2", "FP3")), 
+         target == "REEP5") %>%
+  mutate(concentration = if_else(sample == "P1", 10, 
+                                 if_else(sample == "P2", 50, 
+                                         if_else(sample == "P3", 250, 
+                                                 if_else(sample == "P4", 1250, 
+                                                         if_else(sample == "P5", 6250, 
+                                                                 if_else(sample == "P6", 31250, 156250)))))), 
+         concentration = 1/concentration) %>%
+   dplyr::select(target, concentration, cq) 
+
+
+### Group 3
+
+group3 <- read_quant5("./data/qpcr/group3-efficiency.xls", skip = 47) %>%
+  mutate(ID = paste0(Well, "_", ID))
+
+models3 <- model_qpcr(group3)
+
+results_group3 <- analyze_models(models3)
+
+eff_g3 <- results_group3 %>%
+  separate(ID, into = c("well", "sample", "conc", "na", "target")) %>%
+  dplyr::select(well:target, cq = cpD2) %>%
+  filter(!(sample %in% c("fp1", "fp2", "fp3")), 
+         target == "B2M") %>%
+  mutate(concentration = 1/as.numeric(conc)) %>%
+  dplyr::select(target, concentration, cq) 
+
+
+
+efficiency_est_data <- bind_rows(eff_g1, eff_g2, eff_g3) %>%
+  mutate(target = toupper(target)) %>%
+  filter(cq > 10 & cq < 39) 
+  
+saveRDS(efficiency_est_data, "./data/efficiency-estimate-data.RDS")
+  
+### Create a figure with all data
+ efficiency_est_data %>% 
+  ggplot(aes(cq, log10(concentration), fill = target, group = target)) + 
+  geom_point(shape = 21, size =  2.5) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = target)) +
+   labs(x = "Quantification cycle (Cq)", 
+        color = "Target", 
+        fill = "Target") +
+   theme_bw()
+
+
+## Model efficiency, example solution 
+ 
+ 
+ 
+ # Create models and extract the second coefficient from each model (the slope)
+b2m_slope <- coef(lm(cq ~ log10(concentration), data = filter(efficiency_est_data, target == "B2M")))[2]
+
+reep5_slope <- coef(lm(cq ~ log10(concentration), data = filter(efficiency_est_data, target == "REEP5")))[2]
+
+# Calculate and store the data in a data frame
+efficiency_estimates <- data.frame(target = c("B2M", "REEP5"), 
+           Efficiency = c(10^-(1/b2m_slope), 
+                          10^-(1/reep5_slope)))
+
+
+```
+
+## Estimate fold-change
+
+- Use `./data/foldchange-data.RDS` transform Cq-values to a linear scale using an efficiency factor of 2.
+- Compute an average normalization reference of all reference genes per sample/timepoint.
+- Calculate fold-change of target genes after normalization. 
+
+```{r, echo = FALSE, warning=FALSE}
+
+fc_g1 <- results_group1 %>%
+  separate(ID, into = c("well", "sample", "subsample", "time", "target")) %>%
+  dplyr::select(well:target, cq = cpD2) %>%
+  filter(sample %in% c("FP1", "FP2", "FP3")) %>%
+  dplyr::select(sample, time, target, cq) %>%
+  mutate(target = toupper(target), 
+         target = gsub("RRNA475", "RRNA47S", target)) 
+
+
+
+fc_g2 <- results_group2 %>%
+  separate(ID, into = c("well", "sample", "time", "na", "target")) %>%
+  dplyr::select(well:target, cq = cpD2) %>%
+  filter(sample %in% c("FP1", "FP2", "FP3")) %>%
+  mutate(target = toupper(target), 
+         target = if_else(target %in% c("2A", "2X"), paste0("MYHC", target),
+                 if_else(target == "RNA475", "RRNA47S", target))) %>%
+  dplyr::select(sample, time, target, cq) 
+  
+
+fc_g3 <- results_group3 %>%
+  separate(ID, into = c("well", "sample", "time", "target", "na")) %>%
+  dplyr::select(well:target, cq = cpD2) %>%
+  filter(sample %in% c("fp1", "fp2", "fp3")) %>%
+  mutate(sample = toupper(sample), 
+         target = toupper(target), 
+         time = toupper(time),
+         target = if_else(target == "MYCH2A", "MYHC2A", 
+                          if_else(target == "MYC2A", "MYHC2A", 
+                          if_else(target == "MYCH2X", "MYHC2X", 
+                                  if_else(target == "MYC2X", "MYHC2X", 
+                                  if_else(target == "MYCH1", "MYHC1", 
+                                          if_else(target == "RRNA475", "RRNA47S", target))))))) %>%
+    dplyr::select(sample, time, target, cq) 
+
+
+fc_data <- bind_rows(fc_g1, 
+          fc_g2,
+          fc_g3)
+
+
+saveRDS(fc_data, "./data/foldchange-data.RDS")
+
+```
+
+
+
+
+
+
+

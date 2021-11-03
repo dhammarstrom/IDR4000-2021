@@ -299,11 +299,7 @@ efficiency_estimates <- data.frame(target = c("B2M", "REEP5"),
 
 ## Estimate fold-change
 
-- Use `./data/foldchange-data.RDS` transform Cq-values to a linear scale using an efficiency factor of 2.
-- Compute an average normalization reference of all reference genes per sample/timepoint.
-- Calculate fold-change of target genes after normalization. 
-
-```{r, echo = FALSE, warning=FALSE}
+```{r}
 
 fc_g1 <- results_group1 %>%
   separate(ID, into = c("well", "sample", "subsample", "time", "target")) %>%
@@ -311,7 +307,9 @@ fc_g1 <- results_group1 %>%
   filter(sample %in% c("FP1", "FP2", "FP3")) %>%
   dplyr::select(sample, time, target, cq) %>%
   mutate(target = toupper(target), 
-         target = gsub("RRNA475", "RRNA47S", target)) 
+         target = gsub("RRNA475", "RRNA47S", target)) %>%
+
+  print()
 
 
 
@@ -322,31 +320,34 @@ fc_g2 <- results_group2 %>%
   mutate(target = toupper(target), 
          target = if_else(target %in% c("2A", "2X"), paste0("MYHC", target),
                  if_else(target == "RNA475", "RRNA47S", target))) %>%
-  dplyr::select(sample, time, target, cq) 
+  dplyr::select(sample, time, target, cq) %>%
+  print()
   
 
 fc_g3 <- results_group3 %>%
-  separate(ID, into = c("well", "sample", "time", "target", "na")) %>%
+  separate(ID, into = c("well", "sample", "conc", "target", "na")) %>%
   dplyr::select(well:target, cq = cpD2) %>%
   filter(sample %in% c("fp1", "fp2", "fp3")) %>%
   mutate(sample = toupper(sample), 
          target = toupper(target), 
-         time = toupper(time),
-         target = if_else(target == "MYCH2A", "MYHC2A", 
-                          if_else(target == "MYC2A", "MYHC2A", 
-                          if_else(target == "MYCH2X", "MYHC2X", 
-                                  if_else(target == "MYC2X", "MYHC2X", 
-                                  if_else(target == "MYCH1", "MYHC1", 
-                                          if_else(target == "RRNA475", "RRNA47S", target))))))) %>%
-    dplyr::select(sample, time, target, cq) 
+         target = if_else(target == "MYC2A", "MYHC2A", 
+                          if_else(target == "MYC2X", "MYHC2X",
+                                  if_else(target == "RRNA475", "RRNA47S", 
+                                          if_else(target == "MYCH1", "MYHC1", 
+                                          target)))) , 
+         time = toupper(conc)) %>%
+  dplyr::select(sample, time, target, cq) %>%
+                         
+  print()
 
 
 fc_data <- bind_rows(fc_g1, 
-          fc_g2,
-          fc_g3)
+          fc_g2, 
+          fc_g3) %>%
+  print()
 
+unique(fc_data$target)
 
-saveRDS(fc_data, "./data/foldchange-data.RDS")
 
 ```
 

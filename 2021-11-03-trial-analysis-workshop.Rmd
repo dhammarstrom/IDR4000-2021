@@ -1,0 +1,318 @@
+---
+title: "Analyzing trials - Workshop 1"
+author: "Daniel Hammarström"
+date: "2 11 2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Interpreting the linear model
+
+- A regression model can be used to assess the differences between treatments in a randomized controlled trial (RCT).
+- In the simple case, this can be a comparison of change-scores
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+data.frame(Time = c("Pre", "Post", "Pre", "Post"), outcome = c(0,1, 0,1)) %>%
+        mutate(Time = factor(Time, levels = c("Pre", "Post"))) %>%
+        ggplot(aes(Time, outcome)) + 
+        theme_classic() + 
+        ylab("Outcome") +
+        theme(axis.text.y = element_blank()) +
+        geom_segment(aes(x = Time, xend = 2, 
+                         y = c(0.5,0.5, 0.5,1.5), 
+                         yend = c(0.5,0.5, 1.5,1.5))) + 
+        scale_y_continuous(limits = c(0,2)) + 
+        annotate(geom = "text", x = 2.25, y = 1.5, label = "Treatment") +
+        annotate(geom = "text", x = 2.25, y = 0.5, label = "Control") 
+
+
+```
+
+
+- The alternative hypothesis is that the two groups are different in terms of change scores.
+
+$$ \Delta Y_{Treatment}-\Delta Y_{Control} \neq 0 $$
+
+- The null-hypothesis that we use in our statistical models is 
+
+$$ \Delta Y_{Treatment}-\Delta Y_{Control} = 0 $$
+
+- In the simple case, this equals a *t*-test.
+
+`t.test(delta ~ group, paired = FALSE)`
+
+- A similar scenario is a comparison between two treatments
+
+```{r, echo=FALSE}
+data.frame(Time = c("Pre", "Post", "Pre", "Post"), outcome = c(0,1, 0,1)) %>%
+        mutate(Time = factor(Time, levels = c("Pre", "Post"))) %>%
+        ggplot(aes(Time, outcome)) + 
+        theme_classic() + 
+        ylab("Outcome") +
+        theme(axis.text.y = element_blank()) +
+        geom_segment(aes(x = Time, xend = 2, 
+                         y = c(0.5,0.5, 0.5,1.5), 
+                         yend = c(1.1,0.5, 1.5,1.5))) + 
+        scale_y_continuous(limits = c(0,2)) + 
+        annotate(geom = "text", x = 2.25, y = 1.5, label = "A") +
+        annotate(geom = "text", x = 2.25, y = 1.1, label = "B") 
+
+```
+
+$$ \Delta Y_{A}-\Delta Y_{B} = 0 $$
+
+- The `tenthirty` data set has similar data as in the above scenario
+- We want to know what treatment to recommend for 1RM improvements. 
+
+
+
+
+## Ten-thirty: Exercises
+
+- Using the `tenthirty` data, use filter to keep time-point "pre" and "post" for the leg-press exercise.
+- Make a plot of the averages of each group.
+- Calculate a change score as `post` - `pre`.
+- Make a plot of the average change score for each group.
+- Fit a regression model (`change ~ group`) and interpret the results.
+
+
+### Questions:
+
+1. Concerning the sample: Which group has the largest improvement i leg-press 1RM? 
+2. Concerning inference to the population: Which method do you recommend for improving 1RM leg-press?
+
+
+### Solutions
+
+Create a plot of averages over time:
+
+```{r}
+library(tidyverse); library(exscidata)
+data("tenthirty")
+
+# Save the data set in a filtered version
+tenthirty_reduced <- tenthirty %>%
+  filter(time %in% c("pre", "post"), 
+         exercise == "legpress", 
+         !is.na(load)) %>% 
+  print()
+
+# Create a line plot with one line per group
+tenthirty_reduced %>%  
+  group_by(time, group) %>%
+  summarise(m = mean(load)) %>%
+  mutate(time = factor(time, levels = c("pre", "post"))) %>%
+  ggplot(aes(time, m, color = group, 
+             group = group)) + geom_line()
+
+
+# Create a plot of average changes per group
+tenthirty_reduced %>%
+  pivot_wider(names_from = time, 
+              values_from = load) %>%
+  mutate(change = post - pre) %>%
+  group_by(group) %>%
+  summarise(mean_change = mean(change, na.rm = TRUE)) %>%
+  ggplot(aes(group, mean_change, fill = group)) + 
+  geom_bar(stat = "identity", width = 0.3)
+  
+
+# Calculate the average change per group, and difference between groups
+tenthirty_reduced %>%
+  pivot_wider(names_from = time, 
+              values_from = load) %>%
+  mutate(change = post - pre) %>%
+  group_by(group) %>%
+  summarise(mean_change = mean(change, na.rm = TRUE)) %>%
+  pivot_wider(names_from = group, 
+              values_from = mean_change) %>%
+  mutate(diff = RM30 - RM10) %>%
+  print()
+
+
+# Calculate change score and save new data set
+dat <- tenthirty_reduced %>%
+  pivot_wider(names_from = time, 
+              values_from = load) %>%
+  mutate(change = post - pre) %>%
+  print()
+
+
+# Fit model with change scores explained by group
+m1 <- lm(change ~ group, data = dat)
+
+# 
+summary(m1)
+
+
+
+```
+
+
+
+```{r, echo = TRUE, fig.cap = "Group averages over time"}
+library(exscidata)
+
+tenthirty %>%
+  filter(exercise == "legpress", 
+         time %in% c("pre", "post")) %>%
+  mutate(time = factor(time, levels = c("pre", "post"))) %>%
+  group_by(time, group) %>%
+  summarise(m = mean(load, na.rm = TRUE)) %>%
+  ggplot(aes(time, m, group = group, color = group)) + geom_line() +
+  labs(x = "Time", y = "Legpress performance (kg)", color = "Group") +
+          theme_classic()
+```
+
+
+
+## From t-test to ANCOVA
+
+- Above we used the simple comparison of change score. A more appropriate model to study outcomes of a RCT is an analysis of co-variance (ANCOVA)
+- In an ANCOVA change-scores or post values are compared and the estimates tells you the adjusted differences between groups if they had the exact same starting point.
+
+### ANCOVA exercise
+
+- Fit an ANCOVA model with change scores as the dependent variable
+- Fit an ANCOVA model with the post values as the dependent variable
+- Pre-training values and group should be covariates in both models.
+
+### Questions
+
+1. Concerning inference to the population: Which method do you recommend for improving 1RM leg-press?
+2. In what ways are the models different?
+
+
+### Soultions
+
+```{r}
+
+# Create a data set with change
+
+dat <- tenthirty %>%
+  filter(exercise == "legpress", 
+         time %in% c("pre", "post")) %>%
+  pivot_wider(names_from = time, 
+              values_from = load) %>%
+  mutate(change = post - pre, 
+         pre = pre - mean(pre)) %>% # Mean center pre-values
+  print()
+
+
+# Fit models 
+
+m1 <- lm(post ~ pre + group, data = dat)
+
+m2 <- lm(change ~ pre + group, data = dat)
+
+
+summary(m1)
+summary(m2)
+
+
+m3 <- aov(post ~ pre + group, data = dat)
+
+summary(m3)
+anova(m1)
+
+
+```
+
+
+
+
+
+
+
+```{r, echo = FALSE}
+
+m1 <- tenthirty %>%
+  filter(exercise == "legpress", 
+         time %in% c("pre", "post")) %>%
+  pivot_wider(names_from = "time", values_from = "load") %>%
+  mutate(change = post - pre) %>%
+  lm(post ~ pre + group, data = .) 
+
+
+tenthirty %>%
+  filter(exercise == "legpress", 
+         time %in% c("pre", "post")) %>%
+    pivot_wider(names_from = "time", values_from = "load") %>%
+  ggplot(aes(pre, post, color = group)) + geom_point() + 
+  scale_color_manual(values = c("red", "blue")) +
+  geom_abline(intercept = coef(m1)[1], slope = coef(m1)[2], color = "red")  + 
+  geom_abline(intercept = coef(m1)[1] + coef(m1)[3], slope = coef(m1)[2], color = "blue") + 
+  labs(title = "Estimates from an ANCOVA model", 
+       subtitle = "post ~ pre + group", 
+       color = "Group") + theme_classic()
+
+
+
+m2 <- tenthirty %>%
+  filter(exercise == "legpress", 
+         time %in% c("pre", "post")) %>%
+  pivot_wider(names_from = "time", values_from = "load") %>%
+  mutate(change = post - pre) %>%
+  lm(change ~ pre + group, data = .) 
+
+
+tenthirty %>%
+  filter(exercise == "legpress", 
+         time %in% c("pre", "post")) %>%
+    pivot_wider(names_from = "time", values_from = "load") %>%
+    mutate(change = post - pre) %>%
+  ggplot(aes(pre, change, color = group)) + geom_point() + 
+  scale_color_manual(values = c("red", "blue")) +
+  geom_abline(intercept = coef(m2)[1], slope = coef(m2)[2], color = "red")  + 
+  geom_abline(intercept = coef(m2)[1] + coef(m2)[3], slope = coef(m2)[2], color = "blue") + 
+  labs(title = "Estimates from an ANCOVA model", 
+       subtitle = "change ~ pre + group", 
+       color = "Group") + theme_classic()
+
+```
+
+
+
+
+## Hypertrophy and graded protein dose
+
+- Read Haun et al. and find the main purpose/aim/hypothesis of the study.
+- How do they motivate their purpose/aim/hypothesis?
+- What is the statistical test used test the main hypotheses?
+
+
+
+## Make it simple!
+
+Design an analysis of the data from Haun et al.: 
+  - include only two time-points (T1 and T3)
+  - Select one meassure of muscle hypertrophy
+  - Select a test for a null-hypothesis significance test
+  - Do your results correspond to what is found in Haun et al.?
+
+
+
+
+
+```{r, eval = FALSE, echo = FALSE}
+library(exscidata); library(tidyverse)
+data("hypertrophy")
+
+
+hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3, VL_T4) %>%
+  pivot_longer(names_to = "time", 
+               values_to = "thickness", 
+               cols = VL_T1:VL_T4) %>%
+  group_by(GROUP, time) %>%
+  summarise(m = mean(thickness, na.rm = TRUE), 
+            s = sd(thickness, na.rm = TRUE)) 
+  
+
+
+
+```
+

@@ -1,0 +1,41 @@
+---
+title: "Writing reports in Rmarkdown (Word version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output:
+  word_document:
+    reference_docx: "resources/template.docx"
+---
+
+# Introduction
+
+- Using the MS Word output lets you convert your R Markdown file to a cutomizable word document.
+- If we add a template we will be able to change the layout of the document to e.g. fit requirements for an assignment.
+- You need to specify a template in your YAML field:
+
+```{r eval = FALSE}
+
+---
+title: "Writing reports in Rmarkdown (Word version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output:
+  word_document:
+    reference_docx: "resources/template.docx"
+---
+
+```
+
+- In the template file, headings and ordinary text have been formatted. 
+- You can also specify specific formats by adding Styles (Opprett en stil)
+- To "activate" the style use `<div custom-style="mystyle">`MY STYLE TEXT`</div>`. This will result in
+
+<div custom-style="mystyle"> MY STYLE TEXT </div>
+
+
+
+## Exercises
+
+1. Create a word-template and change the headline styles (font, size and color)
+2. Add a custom style to your template and use it from your R Markdown file. 
+

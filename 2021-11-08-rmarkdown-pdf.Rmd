@@ -1,0 +1,85 @@
+---
+title: "Untitled"
+author: "Daniel Hammarström"
+date: "8 11 2021"
+output: pdf_document
+toc: true
+lot: true
+lof: true
+editor_options: 
+  chunk_output_type: console
+bibliography: resources/references.bib
+---
+
+# Introduction
+
+-   PDF output requires a working LaTeX installation on your computer. The easiest way to do this installation is by installing `tinytex`.
+
+```{r, eval = FALSE}
+
+install.packages('tinytex')
+tinytex::install_tinytex()  # install TinyTeX
+
+```
+
+-   By selecting PDF as output, R Markdown documents will be converted trough LaTeX, a special type setting engine. This makes the output very flexible. Flexibility comes with a price, complexity.
+-   The PDF output should be considered when you want a nice format that is easy to read.
+-   Similar to other outputs you can add components such as figures[@wickham2016], tables and citations with a high degree of customization.
+
+# Table of content, list of table and figures
+
+-   By adding `toc: true`, `lot: true` and `lof: true` to the YAML you will get a table of content and list of tables and figures.
+
+## A subheading
+-   Using subheadings will produce hierarchy in your `toc` 
+
+# References
+
+Sometimes you might want to add references in the middle of the document, this is supported in all outputs by specifying `<div id="refs"> </div>`
+
+<div id="refs"> </div>
+
+# Figures and tables after references
+
+```{r table-1, echo = FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse); library(exscidata); library(knitr); data(dxadata)
+
+dxadata %>%
+  filter(time == "pre") %>%
+  group_by(sex) %>%
+  summarise(age = paste0(round(mean(age), 1), " (", round(sd(age), 1), ")")) %>%
+  kable(col.names = c("Sex", "Age [Mean (SD)]"), 
+        booktabs = TRUE, 
+        caption = "Participant characteristics") 
+
+```
+
+
+
+```{r figure-1, echo = FALSE, warning=FALSE, message=FALSE, fig.cap = "An example figure"}
+
+library(tidyverse); library(exscidata); library(knitr); data(dxadata)
+
+dxadata %>%
+  filter(time == "pre") %>%
+  ggplot(aes(age, fill = sex)) +  geom_histogram()
+  
+
+```
+
+
+# Possible issues with R Markdown and PDF outputs
+
+- To much content may over-flow your pages, if your figures are too big etc. May need customization
+- The LaTeX engine wont work with special characters. Switching to another LaTeX engine might help:
+
+```{r, eval = FALSE}
+
+output:
+  pdf_document:
+    latex_engine: xelatex
+
+```
+
+

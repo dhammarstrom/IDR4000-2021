@@ -1,0 +1,160 @@
+---
+title: "Writing reports in Rmarkdown (HTML version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output: 
+  bookdown::html_document2: default
+bibliography: resources/references.bib
+csl: resources/vancouver.csl
+---
+
+# Introduction
+
+-   R Markdown documents are source documents combining code and text into reproducible reports.
+-   R Markdown can be converted to multiple output formats including HTML, word and PDF. These outputs have several other options to produce presentations, books or simple reports.
+-   Reports can be customized to fit requirements for your thesis or paper.
+
+# Basics
+
+## YAML and bibliography
+
+-   The YAML field lets you specify options for your output file. Not all fields will be read by your output. A simple example that produces the `title`, `author`, `date` and sets the output format of this document (`output`).
+
+```{r, eval = FALSE}
+
+---
+title: "Writing reports in Rmarkdown (HTML version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output: html_document
+---
+ 
+```
+
+-   The YAML field is used to specify the bibliography. This is a file containing references in a format compatible with the reference engine, usually in bibtex format.
+
+-   To add a bibliography, specify `bibliography:` with the path to your bibliography.
+
+```{r, eval = FALSE}
+
+
+
+---
+title: "Writing reports in Rmarkdown (HTML version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output: html_document
+bibliography: resources/references.bib
+---
+
+```
+
+-   In the file `references.bib` a bibtex reference is created such as:
+
+```{r, eval = FALSE}
+
+@article{hammarström2020,
+	title = {Benefits of higher resistance-training volume are related to ribosome biogenesis},
+	author = {{Hammarström}, {Daniel} and {Øfsteng}, {Sjur} and {Koll}, {Lise} and {Hanestadhaugen}, {Marita} and {Hollan}, {Ivana} and {Apró}, {William} and {Whist}, {Jon Elling} and {Blomstrand}, {Eva} and {Rønnestad}, {Bent R.} and {Ellefsen}, {Stian}},
+	year = {2020},
+	date = {2020},
+	journal = {The Journal of physiology},
+	pages = {543--565},
+	volume = {598},
+	number = {3},
+	doi = {10.1113/JP278455},
+	url = {https://www.ncbi.nlm.nih.gov/pubmed/31813190 https://physoc.onlinelibrary.wiley.com/doi/full/10.1113/JP278455},
+	note = {Edition: 2020/01/15},
+	langid = {eng}
+}
+
+
+```
+
+-   If you have Zotero installed, adding references is as easy as opening the visual markdown editor and add citation.
+
+-   In the final report, citations will look e.g. like this [@hammarström2020;@wen2016]. This is the result of writing `[@hammarström2020;@wen2016]` in your markdown document.
+-   Your references must be in your `references.bib` file. If using the plug-in, new references will be updated to the file as you reference.
+
+## Changing the citation style
+
+- Citation styles exists in many different shapes (e.g. (Wen 2016), [2], (2), ^2^)
+- To change the citation style in an R Markdown document you may add a custom csl-file. Citation style language (CSL) is, as the name implies a language for citation styles. Find more information [here](https://citationstyles.org/authors/).
+- Citation styles can be downloaded from the github folder [https://github.com/citation-style-language/styles](https://github.com/citation-style-language/styles). Copy the code from github into a new file and store it in your resources folder. Add `csl: resources/vancouver.csl` to your YAML:
+
+```{r, eval = FALSE}
+---
+title: "Writing reports in Rmarkdown (HTML version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output: 
+  bookdown::html_document2: default
+bibliography: resources/references.bib
+csl: resources/vancouver.csl
+---
+  
+```
+
+
+
+## Cross-referencing
+
+-   You can use cross-referencing inside documents to refer to figures, tables and headlines.
+-   Cross-referencing works when setting the output to `html_document2` in the YAML field, this output is specified in the `bookdown` package so the YAML field will havce to look like this:
+
+```{r eval = FALSE}
+
+---
+title: "Writing reports in Rmarkdown (HTML version)"
+author: "Daniel Hammarström"
+date: "7 11 2021"
+output: 
+  bookdown::html_document2: default
+bibliography: resources/references.bib
+---
+
+```
+
+
+-   To cross-reference a figure, you also have to name the code-chunk producing the figure, e.g. `{r figure-1}`.
+-   You may now reference the figure using `\@ref(fig:figure-1)`. The reference will appear as a number (see Figure \@ref(fig:figure-1)) and the figure will be automatically numbered.
+
+
+```{r figure-1, warning=FALSE, message = FALSE, fig.cap = "An example caption"}
+library(tidyverse);library(exscidata)
+data(dxadata)
+
+dxadata %>%
+  ggplot(aes(height, lean.legs)) + geom_point()
+
+
+```
+
+-   Similarly, tables can also be referenced but the need another type `\@ref(table:table-1)`
+-   Headers can be referenced using e.g. `[see References](#refs)` where `#refs` is a id that I have put after the References heading below. This will produce (see [References](#refs)).
+
+
+
+## Including HTML
+
+-   Since the report engine converts your document to HTML you may add HTML code. E.g. if you would like to embed a youtube clip it is as simple as copying the code from youtube to your document.
+
+```{r, eval = FALSE}
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/_DhOMdcbjuU" frameborder="0" allowfullscreen></iframe>
+
+```
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/_DhOMdcbjuU" frameborder="0" allowfullscreen></iframe>
+
+# Exercises
+
+1. Define a new R project and create a R Markdown file.
+2. Organize the project folder and add a file containing bibtex citations, write some text and add a citation.
+3. Explore the CSL github repository and change your csl format.
+3. Add a figure and a table (`kable`) to the document, cross-reference both.
+
+
+
+
+# References {#refs}

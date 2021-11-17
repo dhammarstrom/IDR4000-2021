@@ -3,6 +3,8 @@ title: "Analysing trials - Workshop part 2"
 date: "2021-11-17"
 output: html_document
 bibliography: references.bib
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Hypertrophy and graded protein dose
@@ -16,29 +18,296 @@ bibliography: references.bib
 Design an analysis of the data from @haun2018:
 
 -   Include only two time-points (T1 and T3)
--   Select one meassure of muscle hypertrophy
+-   Select one measure of muscle hypertrophy
 -   Select a test for a null-hypothesis significance test
 -   Do your results correspond to what is found in @haun2018?
 
-To get started:
+## A possible solution
 
-```{r, eval = FALSE, echo = TRUE}
+We will start by exploring the data, we will use the `VL` (vastus lateralis thickness) data to answer the question if protein supplementation affects training outcomes. Data exploration could mean that we plot the data and include information on groups etc.
+
+The plot below shows the relationship between pre- and post-intervention values with groups indicated by different colors. Points above the line indicates that a participant has greater values after the intervention. Points below the identity line indicates that participants have a negative development pre- to post-intervention. 
+
+
+```{r}
 library(exscidata); library(tidyverse)
 data("hypertrophy")
 
+# For plotting we will set a color scale 
+col_scale <- c("#1b9e77", "#d95f02", "#7570b3")
+
+
+
+
 
 hypertrophy %>%
-  select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3, VL_T4) %>%
-  pivot_longer(names_to = "time", 
-               values_to = "thickness", 
-               cols = VL_T1:VL_T4) %>%
-  group_by(GROUP, time) %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T3) %>%
+  ggplot(aes(VL_T1, VL_T3, color = GROUP)) + geom_point(size = 2.5) +
+  geom_abline(intercept = 0, slope = 1) + 
+  
+  scale_color_manual(values = col_scale) +
+  
+  labs(title = "Relationship between pre- and post-training VL thickness", 
+       subtitle = "The line indicates y = x",
+       x = "Pre-training VL thickness (cm)", 
+       y = "Post-training VL thickness (cm)")
+
+
+
+```
+
+A simple model would be an extension of the above plot. Accounting for the relationship between pre- and post-intervention values, what is the difference between groups at post-intervention. This question can be answered with an ANCOVA. We will start by fitting the model:
+
+```{r}
+# Save the data set
+dat <- hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T3)
+
+# Fit the model
+m1 <- lm(VL_T3 ~ VL_T1 + GROUP, data = dat)
+
+
+# Plot all diagniostic plots in a single plot
+par(mfrow = c(2, 2)) 
+plot(m1)
+par(mfrow = c(1,1)) # resets the plot window
+
+
+```
+
+The diagnostic plots shows no obvious patterns in the residual vs. fitted plots (left column), the residuals might be slightly deviating from a normal distribution (top right) and no data point falls outside the Cook's distance indicating that no single data point influences the fit to large degree (bottom right). 
+
+We may now extract the model coefficients. We will start by plotting them in a graph.
+
+```{r}
+
+
+hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T3) %>%
+  ggplot(aes(VL_T1, VL_T3, color = GROUP)) + geom_point(size = 2.5) +
+  
+    scale_color_manual(values = col_scale) +
+  
+  geom_abline(intercept = coef(m1)[1], slope = coef(m1)[2], color = col_scale[1], size = 1.5) + 
+   geom_abline(intercept = coef(m1)[1] + coef(m1)[3] , slope = coef(m1)[2], color = col_scale[2], size = 1.5) + 
+   geom_abline(intercept = coef(m1)[1] + coef(m1)[4], slope = coef(m1)[2], color = col_scale[3], size = 1.5 ) + 
+  labs(title = "Relationship between pre- and post-training VL thickness", 
+       subtitle = "Lines indicates group averages from the ANCOVA model",
+       x = "Pre-training VL thickness (cm)", 
+       y = "Post-training VL thickness (cm)")
+
+```
+
+Each line in the plot above indicate group averages in post scores given pre-intervention scores. The vertical distance between lines indicate the differences between groups.
+
+The model
+
+$$y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \beta_3X_3$$
+has an intercept $\beta_0$ that corresponds to the post-intervention values when all coefficients are set to 0 (all $X  = 0$). The slope $\beta_1X_1$ is the pre-intervention values and $\beta_2X_2$ and $\beta_3X_3$ are group indicators ($X_2 = 1$ indicates `group = MALTO`, $X_3 = 1$ indicates `group = WP`) giving the differences between `MALTO` and `WP` to the reference level `GWP`.
+
+Inspecting the summary gives supports what the figure already shows, that there are no great differences between groups in post-intervention values:
+
+```{r}
+summary(m1)
+```
+
+@haun2018 used delta-scores (or change-scores) to anwer their question. Instead of modelling the post-values we could model the change. We will start by exploring the relationship between the baseline and change. We will then fit a model on change scores.
+
+
+```{r}
+
+hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T3) %>%
+  mutate(change = VL_T3 - VL_T1) %>%
+  ggplot(aes(VL_T1, change, color = GROUP)) + geom_point(size = 2.5) +
+      scale_color_manual(values = col_scale) +
+  geom_smooth(aes(color = NULL), method = "lm", se = FALSE, color = "black") +
+
+  labs(title = "Relationship between pre- and change scores of VL thickness", 
+       subtitle = "The line indicates the linear relationship between baseline and change",
+       x = "Pre-training VL thickness (cm)", 
+       y = "Post-training VL thickness (cm)")
+
+
+```
+
+The regression line indicates that there is a negative relationship between baseline and change score values. This is something we should consider when comparing groups. Again, an ANCOVA model will make a correction for this relationship. Any imbalance between groups at baseline will be accounted for by modelling the reliationship between baseline and change. 
+
+We will fit the model:
+
+```{r}
+
+dat2 <- hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T3) %>%
+  mutate(change = VL_T3 - VL_T1)
+
+m2 <- lm(change ~ VL_T1 + GROUP, data = dat2)
+
+
+par(mfrow = c(2, 2))
+plot(m2)
+par(mfrow = c(1, 1))
+
+```
+
+Inspecting the diagnostics plots gives us no reason for big concerns regarding the model fit (except maybe for the Q-Q plot). We may will proceed with the model summary. Like before we will plot the model estimates over the raw data.
+
+
+```{r}
+
+hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T3) %>%
+  mutate(change = VL_T3 - VL_T1) %>%
+  ggplot(aes(VL_T1, change, color = GROUP)) + geom_point(size = 2.5) +
+  
+    scale_color_manual(values = col_scale) +
+
+  geom_abline(intercept = coef(m2)[1], slope = coef(m2)[2], color = col_scale[1], size = 1.5) + 
+   geom_abline(intercept = coef(m2)[1] + coef(m2)[3] , slope = coef(m2)[2], color = col_scale[2], size = 1.5) + 
+   geom_abline(intercept = coef(m2)[1] + coef(m2)[4], slope = coef(m2)[2], color = col_scale[3], size = 1.5) + 
+
+  labs(title = "Relationship between pre- and change scores of VL thickness", 
+       subtitle = "The line indicates the linear relationship between baseline and change",
+       x = "Pre-training VL thickness (cm)", 
+       y = "Post-training VL thickness (cm)")
+
+
+```
+
+
+Similarly to the model of raw post-intervention values, the vertical difference between groups are similar. Making tables of the two model indicates that the estimated differences between groups are the same irrespective if we modeled change scores or raw data. 
+
+```{r}
+library(knitr)
+
+
+bind_rows(broom::tidy(m1) %>%
+  mutate(model = "Raw scores"), 
+  broom::tidy(m2) %>%
+  mutate(model = "Change-scores")) %>%
+  select(model, term:p.value) %>%
+  kable(col.names = c("Model", "Coefficient", "Estimate", "SE", "t-value", "p-value"))
+
+
+```
+
+**What model do you think is easiest to explain?**
+
+
+## Reproducing the results from @haun2018
+
+@haun2018 used three time-points (T1, T2 and T3), for the three groups. In Figure 5 results from an ANCOVA on change scores is presented. Let's see if we can replicate the results. We will start by recreating the lower panel of figure 5B. It turns out that the summary values from each of the group/time-point combinations correspond when complete cases are used.
+
+```{r}
+library(ggtext) # used to get the plotting more accurate
+
+hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3) %>%
+  filter(complete.cases(.)) %>%
+  pivot_longer(names_to = "time", values_to = "thickness", 
+               cols = VL_T1:VL_T3) %>%
+  group_by(time, GROUP) %>%
   summarise(m = mean(thickness, na.rm = TRUE), 
-            s = sd(thickness, na.rm = TRUE)) 
+            s = sd(thickness, na.rm = TRUE), 
+            n = n()) %>%
+  mutate(sum_stat = paste0(round(m,2), "<br>(", round(s, 2), ")<br>n = ", n), 
+         GROUP = factor(GROUP, levels = c("MALTO", "WP", "GWP"))) %>%
+  ggplot(aes(time, m)) + 
+  geom_errorbar(aes(ymin = m, ymax = m + s)) +
+  geom_bar(stat = "identity") +
+  
+  geom_richtext(aes(label = sum_stat), nudge_y = 1.2) +
+  
+  facet_wrap(~ GROUP, ncol = 3) + 
+  scale_y_continuous(limits = c(0, 5))
   
 
 
 
 ```
 
+The results of the ANCOVA model in Figure 5B indicates that both mid (T2) and (T3) values are used in the same model. The raw change score data is plotted in the upper panel of Figure 5B. We recreate the plot below.
+
+
+```{r}
+dat3 <- hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3) %>%
+  filter(complete.cases(.)) %>%
+  mutate(VL_T1 = VL_T1, 
+         VL_T2 = VL_T2, 
+         VL_T3 = VL_T3, 
+         T2 = VL_T2 - VL_T1, 
+         T3 = VL_T3 - VL_T1, 
+         VL_T1 = VL_T1 - mean(VL_T1, na.rm = TRUE),
+          GROUP = factor(GROUP, levels = c("MALTO", "WP", "GWP"))) %>%
+  select(PARTICIPANT:VL_T1, T2, T3) %>%
+  pivot_longer(names_to = "time", values_to = "change", cols = T2:T3) %>%
+  print()
+
+
+dat3 %>%
+  group_by(time, GROUP) %>%
+  summarise(m = mean(change)) %>%
+  ggplot(aes(time, m)) + geom_bar(stat = "identity") + 
+  facet_wrap(~ GROUP, ncol = 3) + scale_y_continuous(limits = c(-0.5, 0.5)) + 
+  geom_richtext(aes(label = round(m, 2)))
+```
+
+The model may be fitted using the `lmer` function from `lme4`. We do this since the data are correlated (as long as we use more than a single data point from each participant.)
+
+
+
+```{r}
+library(lmerTest); library(emmeans) 
+
+# fit the model
+m3 <- lmer(change ~  VL_T1 + (time * GROUP) + (1|PARTICIPANT), data = dat3)
+
+
+# calculate estimated marginal means (corrected means)
+emmeans(m3, specs = ~ GROUP|time) %>%
+  data.frame() %>%
+  ggplot(aes(time, emmean)) + geom_bar(stat = "identity") + 
+  facet_wrap(~ GROUP, ncol = 3) + scale_y_continuous(limits = c(-0.5, 0.5)) + 
+  geom_richtext(aes(label = round(emmean, 2)))
+```
+
+The ANOVA table do not correspond to the published values:
+
+
+```{r}
+library(knitr)
+
+# get the global p-values
+data.frame(anova(m3)) %>%
+  mutate(term = row.names(.)) %>%
+  select(term, Pr..F.) %>%
+  kable(col.names = c("Term", "P-value"))
+```
+
+
+## An alternative model - the mixed effects model
+
+
+```{r}
+dat4 <- hypertrophy %>%
+  select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3) %>%
+
+  pivot_longer(names_to = "time", values_to = "change", cols = VL_T1:VL_T3) %>%
+  print()
+
+
+m4 <- lmer(log(change) ~ time * GROUP + (1|PARTICIPANT), data = dat4)
+
+anova(m4)
+
+summary(m4)
+
+
+
+```
+
+
+
 # References
+

@@ -277,42 +277,4 @@ tenthirty %>%
 
 
 
-## Hypertrophy and graded protein dose
-
-- Read Haun et al. and find the main purpose/aim/hypothesis of the study.
-- How do they motivate their purpose/aim/hypothesis?
-- What is the statistical test used test the main hypotheses?
-
-
-
-## Make it simple!
-
-Design an analysis of the data from Haun et al.: 
-  - include only two time-points (T1 and T3)
-  - Select one meassure of muscle hypertrophy
-  - Select a test for a null-hypothesis significance test
-  - Do your results correspond to what is found in Haun et al.?
-
-
-
-
-
-```{r, eval = FALSE, echo = FALSE}
-library(exscidata); library(tidyverse)
-data("hypertrophy")
-
-
-hypertrophy %>%
-  select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3, VL_T4) %>%
-  pivot_longer(names_to = "time", 
-               values_to = "thickness", 
-               cols = VL_T1:VL_T4) %>%
-  group_by(GROUP, time) %>%
-  summarise(m = mean(thickness, na.rm = TRUE), 
-            s = sd(thickness, na.rm = TRUE)) 
-  
-
-
-
-```
 

@@ -1,0 +1,49 @@
+---
+title: "Feedback Assignment 2"
+author: "Daniel Hammarström"
+date: "8 11 2021"
+output: html_document
+---
+
+
+
+# Assignment 2, Part 1: Lactate thresholds
+
+
+|Group | Lactate threshold | CV |
+| --- | --- | --- |
+|Group 1: Pernille, Tonje, Vemund, Aleksander | 2 mmol | 15.4 % |
+|Group 1: Pernille, Tonje, Vemund, Aleksander | 4 mmol | 12.2 % |
+|Group 2: Kristoffer, Karen, Vetle | 2 mmol | 8.3 % |
+|Group 2: Kristoffer, Karen, Vetle | 4 mmol | 1.4 % |
+|Group 3: Håvard, Hermann, Margit, Jacob | 2 mmol | 11.8 % |
+|Group 3: Håvard, Hermann, Margit, Jacob | 4 mmol | 9.6 % |
+
+# Assignment 2, Part 2: Predicting sizes of DNA fragments
+
+- Different size of fragments, would be interesting to see what the reliability of size measurements using Image J would be. How could we design such a study?
+
+
+
+# Assignment 2, Part 3: Intepreting a regression table
+
+What is correct?
+
+1. The t-statistic is used for hypothesis testing, and measures the size of differences in relation to variations in the data.
+2. The higher the t-statistic it is more likely that the null hypothesis is true.
+3. The t-statistic is used together with the p-value.
+4. The p-value tells us about the propability for whether our results is caused by coincidence or not.
+5. Because the p-value is lower than 0.05 our model is significant, and we can reject the null hypothesis.
+6. The p-value (0.0001) tells us that in 0.0001% the null hypothesis is wrong. It is unlikely that our data is caused by coincidence.
+7. P-verdien forteller noe om hvor stor sannsynligheten er for at den observerte forskjellen mellom datasettene skyldes tilfeldigheter. Dette betyr at hvis nullhypotesen er sann, godtar vi at det er 5% sjanse for å gjøre en forkastningsfeil. 
+8. Standardfeilen er en måte å angi feilmarginen med en måling eller et estimat på. Jo større utvalget er, jo lavere vil ofte standardfeilen være. Dette kan og brukes til å teste reliabiliteten med forsøkene.
+9. P-verdien forteller oss hvor overraskende utfallet er hvis null hypotesen er sann.
+10. Standard feil (i en regresjonstabell) er et estimat på reliabiliteten til dataene.
+
+
+
+
+
+
+
+

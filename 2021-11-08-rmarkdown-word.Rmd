@@ -9,7 +9,7 @@ output:
 
 # Introduction
 
-- Using the MS Word output lets you convert your R Markdown file to a cutomizable word document.
+- Using the MS Word output lets you convert your R Markdown file to a customizable word document.
 - If we add a template we will be able to change the layout of the document to e.g. fit requirements for an assignment.
 - You need to specify a template in your YAML field:
 
@@ -30,7 +30,7 @@ output:
 - You can also specify specific formats by adding Styles (Opprett en stil)
 - To "activate" the style use `<div custom-style="mystyle">`MY STYLE TEXT`</div>`. This will result in
 
-<div custom-style="mystyle"> MY STYLE TEXT </div>
+<div custom-style="mystyle2"> MY STYLE TEXT </div>
 
 
 

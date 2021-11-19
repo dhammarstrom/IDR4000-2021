@@ -233,14 +233,14 @@ The results of the ANCOVA model in Figure 5B indicates that both mid (T2) and (T
 dat3 <- hypertrophy %>%
   select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3) %>%
   filter(complete.cases(.)) %>%
-  mutate(VL_T1 = VL_T1, 
-         VL_T2 = VL_T2, 
-         VL_T3 = VL_T3, 
+  mutate( VL_T2 = VL_T2, 
+         VL_T3 = VL_T3,
+      
          T2 = VL_T2 - VL_T1, 
          T3 = VL_T3 - VL_T1, 
          VL_T1 = VL_T1 - mean(VL_T1, na.rm = TRUE),
           GROUP = factor(GROUP, levels = c("MALTO", "WP", "GWP"))) %>%
-  select(PARTICIPANT:VL_T1, T2, T3) %>%
+  select(PARTICIPANT:VL_T1,  T2, T3) %>%
   pivot_longer(names_to = "time", values_to = "change", cols = T2:T3) %>%
   print()
 
@@ -261,7 +261,12 @@ The model may be fitted using the `lmer` function from `lme4`. We do this since 
 library(lmerTest); library(emmeans) 
 
 # fit the model
-m3 <- lmer(change ~  VL_T1 + (time * GROUP) + (1|PARTICIPANT), data = dat3)
+m3 <- lmer(change ~  VL_T1 + time + time:GROUP + (1|PARTICIPANT), data = dat3)
+
+anova(m3)
+
+summary(m3)
+
 
 
 # calculate estimated marginal means (corrected means)
@@ -293,13 +298,16 @@ data.frame(anova(m3)) %>%
 dat4 <- hypertrophy %>%
   select(PARTICIPANT, GROUP, VL_T1, VL_T2, VL_T3) %>%
 
-  pivot_longer(names_to = "time", values_to = "change", cols = VL_T1:VL_T3) %>%
+  pivot_longer(names_to = "time", values_to = "thickness", cols = VL_T1:VL_T3) %>%
   print()
 
 
-m4 <- lmer(log(change) ~ time * GROUP + (1|PARTICIPANT), data = dat4)
+m4 <- lmer(thickness ~ time * GROUP + (1|PARTICIPANT), data = dat4)
 
-anova(m4)
+pairs(emmeans(m4, specs = ~ time), reverse = TRUE)
+
+
+plot(m4)
 
 summary(m4)
 

@@ -1,0 +1,72 @@
+---
+title: "Correlated data"
+date: "2021-11-19"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Alternatives when analyzing correlated data
+
+When we have more observations from each experimental unit (participant, family, classroom etc.) we have correlated data. This needs to be accounted for in the statistica model. In the `dxadata` and `strengthvolume` data sets multiple measurements are collected from each participants. 
+
+Prepare the data:
+
+```{r}
+library(tidyverse); library(exscidata)
+data("dxadata")
+
+
+dat <- dxadata %>%
+  select(participant, time,sex, multiple, single, include,
+         lean.left_leg, lean.right_leg) %>%
+  pivot_longer(names_to = "leg", 
+               values_to = "lean.mass", 
+               cols = lean.left_leg:lean.right_leg) %>% 
+  mutate(leg = if_else(leg == "lean.left_leg", "L", "R"), 
+         sets = if_else(multiple == leg, "multiple", "single")) %>%
+  filter(include == "incl") %>%
+  
+  select(participant, time, sex, sets, leg, lean.mass) %>%
+  
+  pivot_wider(names_from = time, 
+              values_from = lean.mass)  %>%
+  mutate(lbm.change = post - pre, 
+         pre.mc = pre - mean(pre)) %>%
+ 
+  print()
+```
+
+To fit models with correlated data we need to use mixed-effects models that account for the structure of the data set. The package `lme4` has such functions (`lmer`). The package `lmerTest` provides the same function but with the addition of p-values.
+
+Using a ordinary linera model (`lm`) when we have correlation in the data will in some situations lead to false negative results. 
+
+```{r}
+library(lme4); library(lmerTest)
+
+
+m0 <- lm(post ~ pre +sex + sets, data = dat)
+m1 <- lmerTest::lmer(post ~ pre + sex + sets + (1|participant), data = dat)
+m2 <- lme4::lmer(post ~ pre + sex + sets + (1|participant), data = dat)
+
+
+plot(m2)
+
+
+summary(m0)
+summary(m2)
+summary(m1)
+```
+
+Inference from `lme4` (without p-values) can be made based on confidence intervals. 
+
+```{r}
+confint(m2)
+
+```
+
+
+
+
+
+

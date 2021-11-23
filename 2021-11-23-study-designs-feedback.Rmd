@@ -1,0 +1,39 @@
+---
+title: "Feedback Assignment 4 - Study designs"
+author: "Daniel Hammarström"
+date: "2021-11-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The assignment
+
+When writing a report: **Make sure that you answer the objectives!**
+
+- Find at least five original research studies in your selected area and **describe strength and weakness** of these studies.
+- The report should **focus on the design of the studies and selection of statistical tests to answer study aims**.
+- **Conclude your report with a recommendation**, how should future studies in your area be designed to best answer similar questions.
+
+### Comments on your reports:
+
+- Few have actually addressed these objectives!
+- Try to write a clearer link between study designs and statistical tests.
+- Take the opportunity to explain to the reader e.g. why a study design is suitable (or not suitable) for a specific question. This means that you have to describe a study design in relation to what you have identified in the paper you have read.
+- The QALMRI is a good way to **analyze papers**, it might not be the best way to present papers. Your analysis could be a separate document than your report. A better way to write the report could be to highlight differences and similarities between studies and then describe strength and weaknesses in terms of study designs and statistical analyses.
+- Using a table is good if you want to present repetitive details and comparisons. Some information might be better suited for ordinary text. All the information in the table must be "referenced" in the text. This means that you must leave no part of the table un-commented in your report.
+- Use the course literature (or other literature) to highlight strength and weaknesses in the analyzed studies.
+
+
+## Academic writing
+
+- Remember that you are writing to enhance the readers understanding. Your task is to present a lot of information in a structured way. Therefore:
+  - Use clear headlines and themes, try to group the same information or very similar information under a common headline (e.g. results and inference if you are using the QALMRI system for analysis).
+  - Always explain abbreviations on first mention. Ask yourself, do you need an abbreviation?
+  - Take some extra time to explain concepts (e.g. what is a randomized controlled trial).
+- Remember that you are trying to describe or enhance our current understanding, therefore:
+  - Support statements with evidence.
+  - Make it clear what can be interpreted from other text (with references) and what are your conclusions based on interpretations of data.
+

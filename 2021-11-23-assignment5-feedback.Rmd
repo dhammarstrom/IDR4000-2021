@@ -1,0 +1,110 @@
+---
+title: "Assignment 5 - Feedback"
+author: "Daniel Hammarström"
+date: "22 11 2021"
+output: html_document
+---
+
+## Structure your analysis
+
+- Structure your folder in a way that makes you, and collaborator understand what is going on! If you have a complex project, use the `README.md` file to explain your project folder (and possibly the project).
+- Delete or move unused and old files to another sub-folder. 
+
+### `report.Rmd`
+- A report source-file should be placed in the main folder. This will make the Rmd-file use the same folder system as in your project.
+- The report can be knitted to another directory if you wish (in YAML: `output_dir: "./output". Rememeber to create the folder).
+- If the report contains a lot of heavy computations, R-scripts can be used to structure your analysis and creatons of figures. Put all your scripts in specific folder to keep track.
+
+### R
+- Gather all `.R` files in one folder, potentially with sub-folders. These should be named according to what they are doing (e.g. table-1.R).
+
+### Figures
+- If you are creating figures separately from the report.Rmd file, structure this folder containing numbered figures. You could add a `README.md` also in this folder to explain the files further. 
+
+## A proposed file structure
+
+A large project (using R) could be structured like this:
+
+```
+project
+|  README.md
+|  report.Rmd
+|
+|--- resources
+|   | references.bib
+|   | style_template.docx
+|
+|--- data
+|   | example-data.xlsx
+|   | --- derived-data
+|   |   | models.RDS
+|   |   | dataset.RDS
+|
+|--- R
+|   | script-1.R
+|   | script-descriptive-name.R
+|
+|--- figures
+|   | figure-1.R
+|   | figure-1.pdf
+|
+|--- scraps
+|   | old-file-1.R
+
+```
+
+## Comment your code
+- ALWAYS(!) comment your code with your **intentions** to explain why the code looks the way it does. This will help your collaborator and yourself.
+- In large scripts try to add a commented section describing the purpose of the code:
+
+```{r, eval = FALSE}
+
+# Table 1.
+# Purpose: Summarize data and structure Table 1 (participant characteristics).
+# Include Sex, weight, height
+
+
+# load libraries 
+
+# ...
+```
+
+- Use comments to plan your analyzes and code. Write a plan before you proceed with coding.
+
+
+## Descriptive statistics and inferential statistics
+
+- Think about what you are trying to show, and what you are able to show with your data. In the one- vs. three-set training study time-effects are not interesting in an inferential perspective, **why**?
+- Descriptive statistics can be shown with e.g. mean and SD, raw data in figures or summarized data in tables.
+- Inferential statistics are shown with confidence intervals, p-values etc. These statistics should be calculated in relation to your question, **why?**
+
+
+
+# Workshop 23/11 - Descriptive figures
+
+- In `strengthvolume` and `dxadata`, the natural comparison is between volume conditions. Use `dxadata`or `strengthvolume` data to:
+  1. Sketch (pen and paper) a figure showing differences in change scores between volume conditions 
+  2. Create a figure based on your sketch showing differences in change scores between volume conditions 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

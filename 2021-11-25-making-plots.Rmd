@@ -1,0 +1,136 @@
+---
+title: "Creating nice figures"
+date: "2021-11-25"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+# The basic plot 
+
+Before plottting it is a good idea to
+- Reduce the data set to what you want to plot (e.g. mean and standard deviation from a specific exercise and time point)
+- Change levels of factors (e.g. time).
+- Decide on a basic setup, what to plot on x and y axis. Chose a `geom_`
+
+
+```{r}
+
+library(tidyverse); library(exscidata); data("strengthvolume")
+
+
+strengthvolume %>%
+  filter(exercise == "legext", time %in% c("pre", "post")) %>%
+  group_by(sets, time) %>%
+  summarise(m = mean(load, na.rm = TRUE), 
+            s = sd(load, na.rm = TRUE)) %>%
+  mutate(time = factor(time, levels = c("pre", "post"))) %>%
+  ggplot(aes(time, m)) + geom_point()
+
+
+
+```
+
+
+# Adding multiple geoms, points and errorbars
+
+- Error bars can be used to display the variation of the data. `geom_errobar`
+- Points and errorbars will overlap, we need to dodge the geoms using 
+- Add information on grouping to be able to "dodge" the geoms.
+
+```{r}
+
+strengthvolume %>%
+  filter(exercise == "legext", time %in% c("pre", "post")) %>%
+  group_by(sets, time) %>%
+  summarise(m = mean(load, na.rm = TRUE), 
+            s = sd(load, na.rm = TRUE)) %>%
+  mutate(time = factor(time, levels = c("pre", "post"))) %>%
+  ggplot(aes(time, m, color = sets)) + 
+  
+  geom_errorbar(aes(ymin = m - s, ymax = m + s), 
+                position = position_dodge(width = 0.2), 
+                width = 0.2) +
+  geom_point(position = position_dodge(width = 0.2))
+
+
+```
+
+## Is this a suitable graph?
+
+- Does the graph show the comparison we are interested in?
+- Can we highlight the difference?
+- Could we add a graph?
+
+
+# Adding axes titles/labels
+
+- Label axes and other aestethics using the `labs()` function
+- To change labels of categories, add information to the data set.
+
+
+```{r}
+
+strengthvolume %>%
+  filter(exercise == "legext", time %in% c("pre", "post")) %>%
+  group_by(sets, time) %>%
+  summarise(m = mean(load, na.rm = TRUE), 
+            s = sd(load, na.rm = TRUE)) %>%
+  mutate(time = factor(time, levels = c("pre", "post"), labels = c("Pre-training", "Post-training")), 
+         sets = factor(sets, levels = c("single", "multiple"), labels = c("Single-set", "Multiple-set"))) %>%
+  ggplot(aes(time, m, color = sets)) + 
+  
+  geom_errorbar(aes(ymin = m - s, ymax = m + s), 
+                position = position_dodge(width = 0.2), 
+                width = 0.2) +
+  geom_point(position = position_dodge(width = 0.2)) +
+  
+  labs(x = "Time-point", 
+       y = "Average load (kg)", 
+       color = "Sets")
+
+
+```
+
+
+# Changing theme components
+
+
+- Use a pre-built theme to get started (e.g. `theme_bw`)
+- Change legend positions using the `theme()` function (see ?theme).
+
+
+```{r}
+
+strengthvolume %>%
+  filter(exercise == "legext", time %in% c("pre", "post")) %>%
+  group_by(sets, time) %>%
+  summarise(m = mean(load, na.rm = TRUE), 
+            s = sd(load, na.rm = TRUE)) %>%
+  mutate(time = factor(time, levels = c("pre", "post"), labels = c("Pre-training", "Post-training")), 
+         sets = factor(sets, levels = c("single", "multiple"), labels = c("Single-set", "Multiple-set"))) %>%
+  ggplot(aes(time, m, color = sets)) + 
+  
+  geom_errorbar(aes(ymin = m - s, ymax = m + s), 
+                position = position_dodge(width = 0.2), 
+                width = 0.2) +
+  geom_point(position = position_dodge(width = 0.2)) +
+  
+  labs(x = "Time-point", 
+       y = "Average load (kg)", 
+       color = "Sets") +
+  
+  theme_bw() + 
+  
+  theme(legend.position = c(0.1, 0.9))
+  
+```
+
+
+
+
+
+
+
+

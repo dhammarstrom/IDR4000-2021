@@ -78,13 +78,83 @@ project
 - Descriptive statistics can be shown with e.g. mean and SD, raw data in figures or summarized data in tables.
 - Inferential statistics are shown with confidence intervals, p-values etc. These statistics should be calculated in relation to your question, **why?**
 
+## Academic writing, part 2
+
+- Write 
 
 
-# Workshop 23/11 - Descriptive figures
+## Structuring of "Data analysis and Statistics"
 
-- In `strengthvolume` and `dxadata`, the natural comparison is between volume conditions. Use `dxadata`or `strengthvolume` data to:
-  1. Sketch (pen and paper) a figure showing differences in change scores between volume conditions 
-  2. Create a figure based on your sketch showing differences in change scores between volume conditions 
+- How do you present descriptive statistics? 
+  - Descriptive statistics can include raw scores, change scores, ratios, number of observations, etc.
+  - If you state "Descriptive statistics are presented as mean and standard deviation (mean (SD))". Then this should be the case for all data. If you *also* use e.g. median and range, this should be included in this section.
+  
+- If you have done a power calculation. State the power, alpha-level and the number of participant needed to find a desired effect. Also state the effect.
+- If you have done a power calculation, also state what statistical test was used to calculate the power.
+
+
+- Describe the model used to draw inference as precisely as possible. Describe variables used as dependent variables (post-values, change scores, log-transformed change-scores etc.). Describe covariates (e.g. sex, pre-values) and the variable (or variables) used to draw inference (e.g. group).
+- If you used a mixed-effects model, describe what was defined as random effects.
+
+- How do you draw inference?
+  - If you are using confidence intervals from the regression model, also describe what coverage you have on your confidence interval (e.g. 90% or 95%).
+  - If you are using p-values, describe how you calculate the p-value, are they derieved from the regression table or an ANOVA (`anova(model)`)?
+  
+  
+- It is good practice to include version number of all relevant software. In R, use `citation()` to get a BibTeX entry for R and e.g. `citation("lme4")` to get a BibTeX entry for `lme4` (or any other package) 
+
+- Add information on where to find the data and the analyses (e.g. github).
+
+
+## Parts of the report
+
+### Figures
+- Make sure the figure captions are describing the figure in full. This means that you should include:
+  - A title or sentence that describes the results
+  - If needed, a statement regarding how the data were generated (e.g. "Strength was assessed before and after the 12-wk training intervention").
+  - Information regarding any statistical results.
+- Start by creating a plan of what figures you want to include in your report. 
+- Do not present the same data in figures and in text. If you present raw scores in the figure you may want to clarify by presenting average percentage change in the text.
+
+### Tables
+
+- Tables also needs a caption and numbering. 
+- Do not do double presentation
+
+### Text
+- Keep a strict form of the report to get started:
+  - Introduction
+  - Methods
+  - Results
+  - Discussion
+
+
+## Problems in knitting
+
+```
+"! LaTeX Error: Unicode character Ì‡ (U+0307) 
+               not set up for use with LaTeX.
+
+Error: LaTeX failed to compile Arbeidskrev-1.tex"
+```
+
+This error is due to the fact that most LaTeX engines do not use unicode characters. Unicode is a collection of letters, numbers, special characters etc. The unicode character **'COMBINING DOT ABOVE' (U+0307)** have to be written as a LaTeX character in order to work in PDF. A possible solution could be:
+
+```
+$\dot VO_{2max}$
+``` 
+
+This results in $\dot VO_{2max}$.
+
+Other solutions are also possible using LaTeX.
+
+
+```
+"Duplicate chunk label 'setup', which has been used for the chunk"
+```
+
+This is a problem that is due to chunk labels being the same. If you have a chunk label called `setup` you cannot re-use it later in the same document.
+
 
 
 

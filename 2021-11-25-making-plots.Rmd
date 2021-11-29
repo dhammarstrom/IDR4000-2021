@@ -9,7 +9,7 @@ editor_options:
 
 # The basic plot 
 
-Before plottting it is a good idea to
+Before plotting it is a good idea to
 - Reduce the data set to what you want to plot (e.g. mean and standard deviation from a specific exercise and time point)
 - Change levels of factors (e.g. time).
 - Decide on a basic setup, what to plot on x and y axis. Chose a `geom_`

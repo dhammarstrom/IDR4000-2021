@@ -57,7 +57,7 @@ project
 - ALWAYS(!) comment your code with your **intentions** to explain why the code looks the way it does. This will help your collaborator and yourself.
 - In large scripts try to add a commented section describing the purpose of the code:
 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 
 # Table 1.
 # Purpose: Summarize data and structure Table 1 (participant characteristics).
@@ -80,7 +80,10 @@ project
 
 ## Academic writing, part 2
 
-- Write 
+- Do not try to solve all the problems of the world in your report. Focus directly on the problem you are trying to answer with you data.
+- Always provide evidence for statements. Try to find primary sources for evidence.
+- Avoid language that exaggerate or overstate your results (or results from other studies).
+
 
 
 ## Structuring of "Data analysis and Statistics"
@@ -120,6 +123,7 @@ project
 
 - Tables also needs a caption and numbering. 
 - Do not do double presentation
+- Do not use tables to present lengthy text segments that should be in your main text.
 
 ### Text
 - Keep a strict form of the report to get started:
@@ -154,8 +158,6 @@ Other solutions are also possible using LaTeX.
 ```
 
 This is a problem that is due to chunk labels being the same. If you have a chunk label called `setup` you cannot re-use it later in the same document.
-
-
 
 
 
